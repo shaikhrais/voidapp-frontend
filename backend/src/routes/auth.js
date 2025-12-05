@@ -1,160 +1,133 @@
-const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { body, validationResult } = require('express-validator');
-const User = require('../models/User');
+import { Hono } from 'hono';
+import { SignJWT, jwtVerify } from 'jose';
+import { getDB, generateId } from '../db';
+import { users, organizations } from '../schema';
+import { eq } from 'drizzle-orm';
+
+const app = new Hono();
+
+// Simple hash using Web Crypto (Workers-compatible)
+async function hashPassword(password) {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hash = await crypto.subtle.digest('SHA-256', data);
+    return Array.from(new Uint8Array(hash))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+// Helper to create JWT
+async function createToken(userId, secret) {
+    const encoder = new TextEncoder();
+    const jwt = await new SignJWT({ id: userId })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setExpirationTime('7d')
+        .sign(encoder.encode(secret));
+    return jwt;
+}
 
 // Register
-router.post('/register',
-    [
-        body('email').isEmail().withMessage('Invalid email'),
-        body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
-
-        try {
-            const { email, password } = req.body;
-
-            // Check if user exists
-            let user = await User.findOne({ where: { email } });
-            if (user) {
-                return res.status(400).json({ error: 'User already exists' });
-            }
-
-            // Hash password
-            const hashedPassword = await bcrypt.hash(password, 8);
-
-            // Create user
-            user = await User.create({
-                email,
-                password: hashedPassword
-            });
-
-            // Generate token
-            const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'your_jwt_secret', { expiresIn: '7d' });
-
-            res.status(201).json({ user: { id: user.id, email: user.email, role: user.role }, token });
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
-    }
-);
-
-// Login
-router.post('/login',
-    [
-        body('email').isEmail(),
-        body('password').exists()
-    ],
-    async (req, res) => {
-        try {
-            const { email, password } = req.body;
-
-            // Find user
-            const user = await User.findOne({ where: { email } });
-            if (!user) {
-                return res.status(400).json({ error: 'Invalid credentials' });
-            }
-
-            // Check password
-            const isMatch = await bcrypt.compare(password, user.password);
-            if (!isMatch) {
-                return res.status(400).json({ error: 'Invalid credentials' });
-            }
-
-            // Generate token
-            const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'your_jwt_secret', { expiresIn: '7d' });
-
-            res.json({ user: { id: user.id, email: user.email, role: user.role }, token });
-        } catch (error) {
-            res.status(500).json({ error: error.message });
-        }
-    }
-);
-
-// Get Current User
-router.get('/me', async (req, res) => {
+app.post('/register', async (c) => {
     try {
-        const token = req.header('Authorization')?.replace('Bearer ', '');
-        if (!token) return res.status(401).json({ error: 'Authentication required' });
+        const { email, password } = await c.req.json();
+        const db = getDB(c.env);
 
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret');
-        const user = await User.findByPk(decoded.id, { attributes: { exclude: ['password'] } });
+        // Check if user exists
+        const existing = await db.select().from(users).where(eq(users.email, email)).get();
+        if (existing) {
+            return c.json({ error: 'User already exists' }, 400);
+        }
 
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        // Hash password
+        const hashedPassword = await hashPassword(password);
 
-        res.json({ user });
+        // Create organization
+        const orgId = generateId();
+        await db.insert(organizations).values({
+            id: orgId,
+            name: `${email}'s Organization`,
+            credits: 10.0,
+        });
+
+        // Create user
+        const userId = generateId();
+        await db.insert(users).values({
+            id: userId,
+            email,
+            password: hashedPassword,
+            organizationId: orgId,
+        });
+
+        // Generate token
+        const token = await createToken(userId, c.env.JWT_SECRET);
+
+        return c.json({
+            user: { id: userId, email, role: 'user' },
+            token,
+        }, 201);
     } catch (error) {
-        res.status(401).json({ error: 'Invalid token' });
+        return c.json({ error: error.message }, 500);
     }
 });
 
-// Forgot Password
-router.post('/forgot-password',
-    [body('email').isEmail().withMessage('Valid email required')],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+// Login
+app.post('/login', async (c) => {
+    try {
+        const { email, password } = await c.req.json();
+        const db = getDB(c.env);
 
-        try {
-            const user = await User.findOne({ where: { email: req.body.email } });
-            if (!user) return res.status(404).json({ error: 'User not found' });
-
-            // Generate token
-            const resetToken = require('crypto').randomBytes(20).toString('hex');
-            user.resetPasswordToken = resetToken;
-            user.resetPasswordExpires = Date.now() + 3600000; // 1 hour
-            await user.save();
-
-            // In a real app, send email here. For now, log it.
-            console.log(`[Mock Email] Password reset link: http://localhost:3000/reset-password/${resetToken}`);
-
-            res.json({ message: 'Password reset email sent (check server logs)' });
-        } catch (error) {
-            res.status(500).json({ error: error.message });
+        // Find user
+        const user = await db.select().from(users).where(eq(users.email, email)).get();
+        if (!user) {
+            return c.json({ error: 'Invalid credentials' }, 400);
         }
-    }
-);
 
-// Reset Password
-router.post('/reset-password',
-    [
-        body('token').notEmpty(),
-        body('newPassword').isLength({ min: 6 }).withMessage('Password must be at least 6 characters')
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
-
-        try {
-            const { token, newPassword } = req.body;
-            const { Op } = require('sequelize');
-
-            const user = await User.findOne({
-                where: {
-                    resetPasswordToken: token,
-                    resetPasswordExpires: { [Op.gt]: Date.now() }
-                }
-            });
-
-            if (!user) return res.status(400).json({ error: 'Invalid or expired token' });
-
-            // Update password
-            user.password = await bcrypt.hash(newPassword, 8);
-            user.resetPasswordToken = null;
-            user.resetPasswordExpires = null;
-            await user.save();
-
-            res.json({ message: 'Password reset successful' });
-        } catch (error) {
-            res.status(500).json({ error: error.message });
+        // Check password
+        const hashedPassword = await hashPassword(password);
+        if (hashedPassword !== user.password) {
+            return c.json({ error: 'Invalid credentials' }, 400);
         }
-    }
-);
 
-module.exports = router;
+        // Generate token
+        const token = await createToken(user.id, c.env.JWT_SECRET);
+
+        return c.json({
+            user: { id: user.id, email: user.email, role: user.role },
+            token,
+        });
+    } catch (error) {
+        return c.json({ error: error.message }, 500);
+    }
+});
+
+// Get current user
+app.get('/me', async (c) => {
+    try {
+        const authHeader = c.req.header('Authorization');
+        if (!authHeader) {
+            return c.json({ error: 'Authentication required' }, 401);
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const encoder = new TextEncoder();
+        const { payload } = await jwtVerify(token, encoder.encode(c.env.JWT_SECRET));
+
+        const db = getDB(c.env);
+        const user = await db.select({
+            id: users.id,
+            email: users.email,
+            role: users.role,
+            organizationId: users.organizationId,
+        }).from(users).where(eq(users.id, payload.id)).get();
+
+        if (!user) {
+            return c.json({ error: 'User not found' }, 404);
+        }
+
+        return c.json({ user });
+    } catch (error) {
+        return c.json({ error: 'Invalid token' }, 401);
+    }
+});
+
+export default app;
