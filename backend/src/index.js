@@ -1,37 +1,46 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { logger } from 'hono/logger';
-import { serveStatic } from 'hono/cloudflare-workers';
-
-// Import routes
-import authRoutes from './routes/auth';
-import { organizations, numbers, calls, sms, billing, keys } from './routes/placeholders';
 
 const app = new Hono();
 
-// Middleware
-app.use('*', logger());
+// CORS middleware
 app.use('*', cors());
 
 // Health check
 app.get('/health', (c) => {
-    return c.json({ status: 'OK', timestamp: new Date().toISOString() });
+    return c.json({
+        status: 'OK',
+        timestamp: new Date().toISOString(),
+        message: 'VOIP API is running on Cloudflare Workers'
+    });
 });
 
-// API Routes
-app.route('/api/auth', authRoutes);
-app.route('/api/organizations', organizations);
-app.route('/api/numbers', numbers);
-app.route('/api/calls', calls);
-app.route('/api/sms', sms);
-app.route('/api/billing', billing);
-app.route('/api/keys', keys);
+// Simple auth endpoint (placeholder)
+app.post('/api/auth/register', async (c) => {
+    return c.json({
+        message: 'Registration endpoint - Coming soon',
+        note: 'Full implementation requires D1 database setup'
+    }, 501);
+});
 
-// Serve static frontend files
-app.get('/assets/*', serveStatic({ root: './public' }));
-app.get('/index.html', serveStatic({ path: './public/index.html' }));
+app.post('/api/auth/login', async (c) => {
+    return c.json({
+        message: 'Login endpoint - Coming soon',
+        note: 'Full implementation requires D1 database setup'
+    }, 501);
+});
 
-// SPA fallback - serve index.html for all other routes
-app.get('*', serveStatic({ path: './public/index.html' }));
+// Placeholder for other endpoints
+app.all('/api/*', (c) => {
+    return c.json({
+        message: 'API endpoint under development',
+        path: c.req.path
+    }, 501);
+});
+
+// 404 handler
+app.notFound((c) => {
+    return c.json({ error: 'Not found' }, 404);
+});
 
 export default app;
