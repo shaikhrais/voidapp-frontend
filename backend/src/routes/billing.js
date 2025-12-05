@@ -1,94 +1,82 @@
-const express = require('express');
-const router = express.Router();
-const auth = require('../middleware/auth');
-const Organization = require('../models/Organization');
-const Call = require('../models/Call');
-const Message = require('../models/Message');
-const stripe = process.env.STRIPE_SECRET_KEY ? require('stripe')(process.env.STRIPE_SECRET_KEY) : null;
+import { Hono } from 'hono';
+import { jwtVerify } from 'jose';
 
-// Get Balance
-router.get('/balance', auth, async (req, res) => {
+const app = new Hono();
+
+// Auth middleware
+async function authMiddleware(c, next) {
     try {
-        if (!req.user.organizationId) return res.status(400).json({ error: 'No organization' });
-
-        const org = await Organization.findByPk(req.user.organizationId);
-        res.json({ credits: org.credits });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Get Usage History
-router.get('/usage', auth, async (req, res) => {
-    try {
-        if (!req.user.organizationId) return res.status(400).json({ error: 'No organization' });
-
-        const calls = await Call.findAll({
-            where: { organizationId: req.user.organizationId },
-            order: [['createdAt', 'DESC']],
-            limit: 50
-        });
-
-        const messages = await Message.findAll({
-            where: { organizationId: req.user.organizationId },
-            order: [['createdAt', 'DESC']],
-            limit: 50
-        });
-
-        res.json({ calls, messages });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-// Create Checkout Session (Add Credits)
-router.post('/checkout', auth, async (req, res) => {
-    try {
-        if (!req.user.organizationId) return res.status(400).json({ error: 'No organization' });
-        const { amount } = req.body; // Amount in dollars
-
-        if (!amount || amount < 5) return res.status(400).json({ error: 'Minimum amount is $5' });
-
-        // Mock Stripe Session if no key or stripe instance
-        if (!stripe || !process.env.STRIPE_SECRET_KEY) {
-            return res.json({
-                url: 'http://localhost:3000/mock-checkout?success=true',
-                mock: true
-            });
+        const authHeader = c.req.header('Authorization');
+        if (!authHeader) {
+            return c.json({ error: 'Authentication required' }, 401);
         }
 
-        const session = await stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: [{
-                price_data: {
-                    currency: 'usd',
-                    product_data: { name: 'VoIP Credits' },
-                    unit_amount: amount * 100,
-                },
-                quantity: 1,
-            }],
-            mode: 'payment',
-            success_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard?success=true`,
-            cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/dashboard?canceled=true`,
-            metadata: {
-                organizationId: req.user.organizationId
-            }
-        });
+        const token = authHeader.replace('Bearer ', '');
+        const encoder = new TextEncoder();
+        const { payload } = await jwtVerify(token, encoder.encode(c.env.JWT_SECRET));
 
-        res.json({ url: session.url });
+        const db = c.env.DB;
+        const user = await db.prepare(
+            'SELECT id, organization_id FROM users WHERE id = ?'
+        ).bind(payload.id).first();
+
+        if (!user) {
+            return c.json({ error: 'User not found' }, 401);
+        }
+
+        c.set('userId', user.id);
+        c.set('organizationId', user.organization_id);
+        await next();
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        return c.json({ error: 'Invalid token' }, 401);
     }
-});
+}
 
-// Customer Portal
-router.post('/portal', auth, async (req, res) => {
+// Get balance
+app.get('/balance', authMiddleware, async (c) => {
     try {
-        // Mock Portal
-        res.json({ url: 'https://billing.stripe.com/p/login/mock' });
+        const organizationId = c.get('organizationId');
+        const db = c.env.DB;
+
+        const org = await db.prepare(
+            'SELECT credits FROM organizations WHERE id = ?'
+        ).bind(organizationId).first();
+
+        return c.json({ balance: org?.credits || 0 });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        return c.json({ error: error.message }, 500);
     }
 });
 
-module.exports = router;
+// Get usage
+app.get('/usage', authMiddleware, async (c) => {
+    try {
+        const organizationId = c.get('organizationId');
+        const db = c.env.DB;
+
+        const calls = await db.prepare(
+            'SELECT COUNT(*) as count FROM calls WHERE organization_id = ?'
+        ).bind(organizationId).first();
+
+        const messages = await db.prepare(
+            'SELECT COUNT(*) as count FROM messages WHERE organization_id = ?'
+        ).bind(organizationId).first();
+
+        return c.json({
+            calls: calls?.count || 0,
+            messages: messages?.count || 0
+        });
+    } catch (error) {
+        return c.json({ error: error.message }, 500);
+    }
+});
+
+// Checkout (placeholder - Stripe integration needed)
+app.post('/checkout', authMiddleware, async (c) => {
+    return c.json({
+        message: 'Stripe checkout not yet implemented',
+        note: 'This requires Stripe API integration'
+    }, 501);
+});
+
+export default app;

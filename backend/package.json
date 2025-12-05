@@ -2,32 +2,17 @@
   "name": "voipapp-workers",
   "version": "1.0.0",
   "type": "module",
-  "description": "VOIP Service API powered by Twilio on Cloudflare Workers",
+  "description": "VOIP Service API on Cloudflare Workers",
   "main": "src/index.js",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "build": "node scripts/build.js",
-    "migrate": "wrangler d1 migrations apply voipapp-db",
-    "migrate:local": "wrangler d1 migrations apply voipapp-db --local"
+    "deploy": "wrangler deploy"
   },
-  "keywords": [
-    "voip",
-    "twilio",
-    "api",
-    "telephony",
-    "cloudflare-workers"
-  ],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
     "hono": "^4.0.0",
-    "drizzle-orm": "^0.29.0",
     "jose": "^5.2.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20231218.0",
-    "drizzle-kit": "^0.20.0",
     "wrangler": "^4.53.0"
   }
 }

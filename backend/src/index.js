@@ -1,6 +1,10 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 
+// Import routes
+import authRoutes from './routes/auth';
+import billingRoutes from './routes/billing';
+
 const app = new Hono();
 
 // CORS middleware
@@ -11,31 +15,34 @@ app.get('/health', (c) => {
     return c.json({
         status: 'OK',
         timestamp: new Date().toISOString(),
-        message: 'VOIP API is running on Cloudflare Workers'
+        message: 'VOIP API is running on Cloudflare Workers',
+        version: '2.0'
     });
 });
 
-// Simple auth endpoint (placeholder)
-app.post('/api/auth/register', async (c) => {
-    return c.json({
-        message: 'Registration endpoint - Coming soon',
-        note: 'Full implementation requires D1 database setup'
-    }, 501);
-});
-
-app.post('/api/auth/login', async (c) => {
-    return c.json({
-        message: 'Login endpoint - Coming soon',
-        note: 'Full implementation requires D1 database setup'
-    }, 501);
-});
+// API Routes
+app.route('/api/auth', authRoutes);
+app.route('/api/billing', billingRoutes);
 
 // Placeholder for other endpoints
-app.all('/api/*', (c) => {
-    return c.json({
-        message: 'API endpoint under development',
-        path: c.req.path
-    }, 501);
+app.all('/api/numbers*', (c) => {
+    return c.json({ message: 'Numbers endpoint - Coming soon' }, 501);
+});
+
+app.all('/api/calls*', (c) => {
+    return c.json({ message: 'Calls endpoint - Coming soon' }, 501);
+});
+
+app.all('/api/sms*', (c) => {
+    return c.json({ message: 'SMS endpoint - Coming soon' }, 501);
+});
+
+app.all('/api/organizations*', (c) => {
+    return c.json({ message: 'Organizations endpoint - Coming soon' }, 501);
+});
+
+app.all('/api/keys*', (c) => {
+    return c.json({ message: 'API Keys endpoint - Coming soon' }, 501);
 });
 
 // 404 handler

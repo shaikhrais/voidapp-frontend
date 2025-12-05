@@ -1,8 +1,5 @@
 import { Hono } from 'hono';
 import { SignJWT, jwtVerify } from 'jose';
-import { getDB, generateId } from '../db';
-import { users, organizations } from '../schema';
-import { eq } from 'drizzle-orm';
 
 const app = new Hono();
 
@@ -30,10 +27,10 @@ async function createToken(userId, secret) {
 app.post('/register', async (c) => {
     try {
         const { email, password } = await c.req.json();
-        const db = getDB(c.env);
+        const db = c.env.DB;
 
         // Check if user exists
-        const existing = await db.select().from(users).where(eq(users.email, email)).get();
+        const existing = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
         if (existing) {
             return c.json({ error: 'User already exists' }, 400);
         }
@@ -42,21 +39,16 @@ app.post('/register', async (c) => {
         const hashedPassword = await hashPassword(password);
 
         // Create organization
-        const orgId = generateId();
-        await db.insert(organizations).values({
-            id: orgId,
-            name: `${email}'s Organization`,
-            credits: 10.0,
-        });
+        const orgId = crypto.randomUUID();
+        await db.prepare(
+            'INSERT INTO organizations (id, name, credits) VALUES (?, ?, ?)'
+        ).bind(orgId, `${email}'s Organization`, 10.0).run();
 
         // Create user
-        const userId = generateId();
-        await db.insert(users).values({
-            id: userId,
-            email,
-            password: hashedPassword,
-            organizationId: orgId,
-        });
+        const userId = crypto.randomUUID();
+        await db.prepare(
+            'INSERT INTO users (id, email, password, organization_id, role) VALUES (?, ?, ?, ?, ?)'
+        ).bind(userId, email, hashedPassword, orgId, 'user').run();
 
         // Generate token
         const token = await createToken(userId, c.env.JWT_SECRET);
@@ -66,6 +58,7 @@ app.post('/register', async (c) => {
             token,
         }, 201);
     } catch (error) {
+        console.error('Register error:', error);
         return c.json({ error: error.message }, 500);
     }
 });
@@ -74,10 +67,13 @@ app.post('/register', async (c) => {
 app.post('/login', async (c) => {
     try {
         const { email, password } = await c.req.json();
-        const db = getDB(c.env);
+        const db = c.env.DB;
 
         // Find user
-        const user = await db.select().from(users).where(eq(users.email, email)).get();
+        const user = await db.prepare(
+            'SELECT id, email, password, role, organization_id FROM users WHERE email = ?'
+        ).bind(email).first();
+
         if (!user) {
             return c.json({ error: 'Invalid credentials' }, 400);
         }
@@ -92,10 +88,16 @@ app.post('/login', async (c) => {
         const token = await createToken(user.id, c.env.JWT_SECRET);
 
         return c.json({
-            user: { id: user.id, email: user.email, role: user.role },
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                organizationId: user.organization_id
+            },
             token,
         });
     } catch (error) {
+        console.error('Login error:', error);
         return c.json({ error: error.message }, 500);
     }
 });
@@ -112,20 +114,25 @@ app.get('/me', async (c) => {
         const encoder = new TextEncoder();
         const { payload } = await jwtVerify(token, encoder.encode(c.env.JWT_SECRET));
 
-        const db = getDB(c.env);
-        const user = await db.select({
-            id: users.id,
-            email: users.email,
-            role: users.role,
-            organizationId: users.organizationId,
-        }).from(users).where(eq(users.id, payload.id)).get();
+        const db = c.env.DB;
+        const user = await db.prepare(
+            'SELECT id, email, role, organization_id FROM users WHERE id = ?'
+        ).bind(payload.id).first();
 
         if (!user) {
             return c.json({ error: 'User not found' }, 404);
         }
 
-        return c.json({ user });
+        return c.json({
+            user: {
+                id: user.id,
+                email: user.email,
+                role: user.role,
+                organizationId: user.organization_id
+            }
+        });
     } catch (error) {
+        console.error('Auth error:', error);
         return c.json({ error: 'Invalid token' }, 401);
     }
 });
