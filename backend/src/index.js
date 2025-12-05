@@ -4,10 +4,6 @@ import { SignJWT, jwtVerify } from 'jose';
 
 const app = new Hono();
 
-// In-memory storage (for demo - will reset on deployment)
-const users = new Map();
-const organizations = new Map();
-
 // CORS middleware
 app.use('*', cors());
 
@@ -42,17 +38,32 @@ app.get('/health', (c) => {
         status: 'OK',
         timestamp: new Date().toISOString(),
         message: 'VOIP API on Cloudflare Workers',
-        version: '3.0',
-        note: 'Using in-memory storage (demo mode)'
+        version: '4.0',
+        database: 'D1 (SQLite)',
+        features: ['Auth', 'Billing', 'Organizations']
     });
 });
 
-// Auth routes
+// Test D1 connection
+app.get('/test-db', async (c) => {
+    try {
+        const db = c.env.DB;
+        const result = await db.prepare('SELECT COUNT(*) as count FROM users').first();
+        return c.json({ success: true, userCount: result.count });
+    } catch (error) {
+        return c.json({ error: error.message }, 500);
+    }
+});
+
+// Auth - Register
 app.post('/api/auth/register', async (c) => {
     try {
         const { email, password } = await c.req.json();
+        const db = c.env.DB;
 
-        if (users.has(email)) {
+        // Check if user exists
+        const existing = await db.prepare('SELECT id FROM users WHERE email = ?').bind(email).first();
+        if (existing) {
             return c.json({ error: 'User already exists' }, 400);
         }
 
@@ -60,36 +71,38 @@ app.post('/api/auth/register', async (c) => {
         const userId = crypto.randomUUID();
         const orgId = crypto.randomUUID();
 
-        organizations.set(orgId, {
-            id: orgId,
-            name: `${email}'s Organization`,
-            credits: 10.0
-        });
+        // Create organization
+        await db.prepare(
+            'INSERT INTO organizations (id, name, credits, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+        ).bind(orgId, `${email}'s Organization`, 10.0, Date.now(), Date.now()).run();
 
-        users.set(email, {
-            id: userId,
-            email,
-            password: hashedPassword,
-            role: 'user',
-            organizationId: orgId
-        });
+        // Create user
+        await db.prepare(
+            'INSERT INTO users (id, email, password, organization_id, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
+        ).bind(userId, email, hashedPassword, orgId, 'user', Date.now(), Date.now()).run();
 
         const token = await createToken(userId, c.env.JWT_SECRET);
 
         return c.json({
-            user: { id: userId, email, role: 'user' },
+            user: { id: userId, email, role: 'user', organizationId: orgId },
             token
         }, 201);
     } catch (error) {
+        console.error('Register error:', error);
         return c.json({ error: error.message }, 500);
     }
 });
 
+// Auth - Login
 app.post('/api/auth/login', async (c) => {
     try {
         const { email, password } = await c.req.json();
+        const db = c.env.DB;
 
-        const user = users.get(email);
+        const user = await db.prepare(
+            'SELECT id, email, password, role, organization_id FROM users WHERE email = ?'
+        ).bind(email).first();
+
         if (!user) {
             return c.json({ error: 'Invalid credentials' }, 400);
         }
@@ -106,15 +119,17 @@ app.post('/api/auth/login', async (c) => {
                 id: user.id,
                 email: user.email,
                 role: user.role,
-                organizationId: user.organizationId
+                organizationId: user.organization_id
             },
             token
         });
     } catch (error) {
+        console.error('Login error:', error);
         return c.json({ error: error.message }, 500);
     }
 });
 
+// Auth - Get current user
 app.get('/api/auth/me', async (c) => {
     try {
         const authHeader = c.req.header('Authorization');
@@ -125,7 +140,11 @@ app.get('/api/auth/me', async (c) => {
         const token = authHeader.replace('Bearer ', '');
         const payload = await verifyToken(token, c.env.JWT_SECRET);
 
-        const user = Array.from(users.values()).find(u => u.id === payload.id);
+        const db = c.env.DB;
+        const user = await db.prepare(
+            'SELECT id, email, role, organization_id FROM users WHERE id = ?'
+        ).bind(payload.id).first();
+
         if (!user) {
             return c.json({ error: 'User not found' }, 404);
         }
@@ -135,15 +154,16 @@ app.get('/api/auth/me', async (c) => {
                 id: user.id,
                 email: user.email,
                 role: user.role,
-                organizationId: user.organizationId
+                organizationId: user.organization_id
             }
         });
     } catch (error) {
+        console.error('Auth error:', error);
         return c.json({ error: 'Invalid token' }, 401);
     }
 });
 
-// Billing routes
+// Billing - Get balance
 app.get('/api/billing/balance', async (c) => {
     try {
         const authHeader = c.req.header('Authorization');
@@ -153,21 +173,63 @@ app.get('/api/billing/balance', async (c) => {
 
         const token = authHeader.replace('Bearer ', '');
         const payload = await verifyToken(token, c.env.JWT_SECRET);
-        const user = Array.from(users.values()).find(u => u.id === payload.id);
+
+        const db = c.env.DB;
+        const user = await db.prepare(
+            'SELECT organization_id FROM users WHERE id = ?'
+        ).bind(payload.id).first();
 
         if (!user) {
             return c.json({ error: 'User not found' }, 401);
         }
 
-        const org = organizations.get(user.organizationId);
+        const org = await db.prepare(
+            'SELECT credits FROM organizations WHERE id = ?'
+        ).bind(user.organization_id).first();
+
         return c.json({ balance: org?.credits || 0 });
     } catch (error) {
+        console.error('Balance error:', error);
         return c.json({ error: 'Invalid token' }, 401);
     }
 });
 
+// Billing - Get usage
 app.get('/api/billing/usage', async (c) => {
-    return c.json({ calls: 0, messages: 0 });
+    try {
+        const authHeader = c.req.header('Authorization');
+        if (!authHeader) {
+            return c.json({ error: 'Authentication required' }, 401);
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const payload = await verifyToken(token, c.env.JWT_SECRET);
+
+        const db = c.env.DB;
+        const user = await db.prepare(
+            'SELECT organization_id FROM users WHERE id = ?'
+        ).bind(payload.id).first();
+
+        if (!user) {
+            return c.json({ error: 'User not found' }, 401);
+        }
+
+        const calls = await db.prepare(
+            'SELECT COUNT(*) as count FROM calls WHERE organization_id = ?'
+        ).bind(user.organization_id).first();
+
+        const messages = await db.prepare(
+            'SELECT COUNT(*) as count FROM messages WHERE organization_id = ?'
+        ).bind(user.organization_id).first();
+
+        return c.json({
+            calls: calls?.count || 0,
+            messages: messages?.count || 0
+        });
+    } catch (error) {
+        console.error('Usage error:', error);
+        return c.json({ error: 'Invalid token' }, 401);
+    }
 });
 
 // Placeholder routes
@@ -176,6 +238,7 @@ app.all('/api/calls*', (c) => c.json({ message: 'Calls - Coming soon' }, 501));
 app.all('/api/sms*', (c) => c.json({ message: 'SMS - Coming soon' }, 501));
 app.all('/api/organizations*', (c) => c.json({ message: 'Organizations - Coming soon' }, 501));
 app.all('/api/keys*', (c) => c.json({ message: 'API Keys - Coming soon' }, 501));
+app.post('/api/billing/checkout', (c) => c.json({ message: 'Stripe checkout - Coming soon' }, 501));
 
 // 404
 app.notFound((c) => c.json({ error: 'Not found' }, 404));

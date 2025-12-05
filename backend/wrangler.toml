@@ -3,9 +3,7 @@ main = "src/index.js"
 compatibility_date = "2024-12-05"
 compatibility_flags = ["nodejs_compat"]
 
-# D1 Database - Disabled due to deployment issues
-# Will be re-enabled once database issue is resolved
-# [[d1_databases]]
-# binding = "DB"
-# database_name = "voipapp-production"
-# database_id = "717d56b5-8525-8800-fca3-843fead6"
+[[d1_databases]]
+binding = "DB"
+database_name = "voipapp-v2"
+database_id = "4769652e-b4f6-472e-95aa-82d231d8cd7d"
