@@ -1,12 +1,13 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Phone, PhoneCall, MessageSquare, Settings, LogOut, User } from 'lucide-react';
+import { LayoutDashboard, Phone, PhoneCall, MessageSquare, Settings, LogOut, User, Menu } from 'lucide-react';
 
 const DashboardLayout = () => {
     const { user, logout } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
+    const [sidebarOpen, setSidebarOpen] = React.useState(true);
 
     const handleLogout = () => {
         logout();
@@ -21,33 +22,215 @@ const DashboardLayout = () => {
         { path: '/dashboard/settings', label: 'Settings', icon: Settings },
     ];
 
+    const styles = {
+        container: {
+            display: 'flex',
+            minHeight: '100vh',
+            width: '100%',
+            background: '#0f172a',
+        },
+        sidebar: {
+            width: sidebarOpen ? '280px' : '80px',
+            background: 'linear-gradient(180deg, #1e293b 0%, #0f172a 100%)',
+            borderRight: '1px solid #334155',
+            display: 'flex',
+            flexDirection: 'column',
+            transition: 'width 0.2s',
+            flexShrink: 0,
+        },
+        sidebarHeader: {
+            padding: '1.5rem',
+            borderBottom: '1px solid #334155',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+        },
+        logo: {
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+        },
+        nav: {
+            flex: 1,
+            padding: '1.5rem 1rem',
+            overflowY: 'auto',
+        },
+        navList: {
+            listStyle: 'none',
+            padding: 0,
+            margin: 0,
+        },
+        navItem: {
+            marginBottom: '0.5rem',
+        },
+        navLink: (isActive) => ({
+            display: 'flex',
+            alignItems: 'center',
+            padding: '0.875rem 1rem',
+            borderRadius: '0.75rem',
+            textDecoration: 'none',
+            color: isActive ? 'white' : '#cbd5e1',
+            background: isActive ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+            fontWeight: isActive ? '600' : '500',
+            fontSize: '0.875rem',
+            transition: 'all 0.2s',
+        }),
+        navIcon: {
+            marginRight: sidebarOpen ? '0.875rem' : '0',
+            flexShrink: 0,
+        },
+        navLabel: {
+            opacity: sidebarOpen ? 1 : 0,
+            transition: 'opacity 0.2s',
+            whiteSpace: 'nowrap',
+        },
+        userSection: {
+            padding: '1rem',
+            borderTop: '1px solid #334155',
+        },
+        userCard: {
+            background: '#334155',
+            borderRadius: '0.75rem',
+            padding: '1rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+        },
+        avatar: {
+            width: '40px',
+            height: '40px',
+            borderRadius: '9999px',
+            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+        },
+        userInfo: {
+            flex: 1,
+            minWidth: 0,
+            opacity: sidebarOpen ? 1 : 0,
+            transition: 'opacity 0.2s',
+        },
+        userName: {
+            fontSize: '0.875rem',
+            fontWeight: '600',
+            color: '#f1f5f9',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+        },
+        userEmail: {
+            fontSize: '0.75rem',
+            color: '#94a3b8',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+        },
+        logoutBtn: {
+            background: 'none',
+            border: 'none',
+            color: '#cbd5e1',
+            cursor: 'pointer',
+            padding: '0.5rem',
+            borderRadius: '0.5rem',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+        },
+        main: {
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            minWidth: 0,
+            width: '100%',
+        },
+        header: {
+            background: '#1e293b',
+            borderBottom: '1px solid #334155',
+            padding: '1.25rem 2rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+        },
+        headerTitle: {
+            fontSize: '1.5rem',
+            fontWeight: '700',
+            color: '#f1f5f9',
+        },
+        content: {
+            flex: 1,
+            padding: '2rem',
+            overflowY: 'auto',
+            background: '#0f172a',
+            width: '100%',
+        },
+        menuBtn: {
+            background: '#334155',
+            border: 'none',
+            color: '#f1f5f9',
+            cursor: 'pointer',
+            padding: '0.5rem',
+            borderRadius: '0.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.2s',
+        },
+    };
+
+    const getPageTitle = () => {
+        const item = navItems.find(item => item.path === location.pathname);
+        return item ? item.label : 'Dashboard';
+    };
+
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f3f4f6' }}>
+        <div style={styles.container} className="animate-fade-in">
             {/* Sidebar */}
-            <aside style={{ width: '250px', backgroundColor: 'white', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ padding: '1.5rem', borderBottom: '1px solid #e5e7eb' }}>
-                    <h1 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: '#2563eb' }}>VOIP SaaS</h1>
+            <aside style={styles.sidebar}>
+                <div style={styles.sidebarHeader}>
+                    <h1 style={styles.logo}>{sidebarOpen ? 'VOIP SaaS' : 'VS'}</h1>
+                    <button
+                        style={styles.menuBtn}
+                        onClick={() => setSidebarOpen(!sidebarOpen)}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#6366f1'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = '#334155'}
+                    >
+                        <Menu size={20} />
+                    </button>
                 </div>
 
-                <nav style={{ flex: 1, padding: '1rem' }}>
-                    <ul style={{ listStyle: 'none', padding: 0 }}>
+                <nav style={styles.nav}>
+                    <ul style={styles.navList}>
                         {navItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = location.pathname === item.path;
                             return (
-                                <li key={item.path} style={{ marginBottom: '0.5rem' }}>
-                                    <Link to={item.path} style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        padding: '0.75rem 1rem',
-                                        borderRadius: '6px',
-                                        textDecoration: 'none',
-                                        color: isActive ? '#2563eb' : '#4b5563',
-                                        backgroundColor: isActive ? '#eff6ff' : 'transparent',
-                                        fontWeight: isActive ? '500' : 'normal'
-                                    }}>
-                                        <Icon size={20} style={{ marginRight: '0.75rem' }} />
-                                        {item.label}
+                                <li key={item.path} style={styles.navItem}>
+                                    <Link
+                                        to={item.path}
+                                        style={styles.navLink(isActive)}
+                                        onMouseEnter={(e) => {
+                                            if (!isActive) {
+                                                e.currentTarget.style.background = '#334155';
+                                                e.currentTarget.style.transform = 'translateX(4px)';
+                                            }
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!isActive) {
+                                                e.currentTarget.style.background = 'transparent';
+                                                e.currentTarget.style.transform = 'translateX(0)';
+                                            }
+                                        }}
+                                    >
+                                        <Icon size={20} style={styles.navIcon} />
+                                        <span style={styles.navLabel}>{item.label}</span>
                                     </Link>
                                 </li>
                             );
@@ -55,37 +238,41 @@ const DashboardLayout = () => {
                     </ul>
                 </nav>
 
-                <div style={{ padding: '1rem', borderTop: '1px solid #e5e7eb' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem', padding: '0 1rem' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#e5e7eb', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: '0.75rem' }}>
-                            <User size={16} color="#6b7280" />
+                <div style={styles.userSection}>
+                    <div style={styles.userCard}>
+                        <div style={styles.avatar}>
+                            <User size={20} color="white" />
                         </div>
-                        <div style={{ overflow: 'hidden' }}>
-                            <p style={{ fontSize: '0.875rem', fontWeight: '500', color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</p>
-                            <p style={{ fontSize: '0.75rem', color: '#6b7280' }}>{user?.role}</p>
+                        <div style={styles.userInfo}>
+                            <div style={styles.userName}>User</div>
+                            <div style={styles.userEmail}>{user?.email || 'user@example.com'}</div>
                         </div>
+                        <button
+                            style={styles.logoutBtn}
+                            onClick={handleLogout}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#ef4444';
+                                e.currentTarget.style.color = 'white';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'none';
+                                e.currentTarget.style.color = '#cbd5e1';
+                            }}
+                        >
+                            <LogOut size={18} />
+                        </button>
                     </div>
-                    <button onClick={handleLogout} style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        width: '100%',
-                        padding: '0.75rem 1rem',
-                        border: 'none',
-                        backgroundColor: 'transparent',
-                        color: '#ef4444',
-                        cursor: 'pointer',
-                        borderRadius: '6px',
-                        transition: 'background-color 0.2s'
-                    }}>
-                        <LogOut size={20} style={{ marginRight: '0.75rem' }} />
-                        Logout
-                    </button>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main style={{ flex: 1, padding: '2rem', overflowY: 'auto' }}>
-                <Outlet />
+            <main style={styles.main}>
+                <header style={styles.header}>
+                    <h2 style={styles.headerTitle}>{getPageTitle()}</h2>
+                </header>
+                <div style={styles.content}>
+                    <Outlet />
+                </div>
             </main>
         </div>
     );
