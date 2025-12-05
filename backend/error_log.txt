@@ -1,0 +1,11 @@
+Require Error: Error: Neither apiKey nor config.authenticator provided
+    at Stripe._setAuthenticator (C:\Users\User\Projects\VOIPapp\node_modules\stripe\cjs\stripe.core.js:158:23)
+    at new Stripe (C:\Users\User\Projects\VOIPapp\node_modules\stripe\cjs\stripe.core.js:96:14)
+    at Stripe (C:\Users\User\Projects\VOIPapp\node_modules\stripe\cjs\stripe.core.js:52:20)
+    at Object.<anonymous> (C:\Users\User\Projects\VOIPapp\src\routes\billing.js:7:33)
+    at Module._compile (node:internal/modules/cjs/loader:1529:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1613:10)
+    at Module.load (node:internal/modules/cjs/loader:1275:32)
+    at Module._load (node:internal/modules/cjs/loader:1096:12)
+    at Module.require (node:internal/modules/cjs/loader:1298:19)
+    at require (node:internal/modules/helpers:182:18)

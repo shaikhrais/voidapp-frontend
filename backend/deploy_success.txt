@@ -1,0 +1,9 @@
+
+ ⛅️ wrangler 4.53.0
+───────────────────
+Total Upload: 23.33 KiB / gzip: 5.82 KiB
+Worker Startup Time: 9 ms
+Uploaded voipapp (2.60 sec)
+Deployed voipapp triggers (1.32 sec)
+  https://voipapp.itpro-mohammed.workers.dev
+Current Version ID: ebe3589e-83f3-40b8-8c4d-76a434f6590d
