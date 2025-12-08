@@ -92,7 +92,7 @@ app.post('/login', async (c) => {
                 id: user.id,
                 email: user.email,
                 role: user.role,
-                organizationId: user.organization_id
+                organization_id: user.organization_id
             },
             token,
         });
@@ -128,7 +128,7 @@ app.get('/me', async (c) => {
                 id: user.id,
                 email: user.email,
                 role: user.role,
-                organizationId: user.organization_id
+                organization_id: user.organization_id
             }
         });
     } catch (error) {

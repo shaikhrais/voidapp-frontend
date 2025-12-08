@@ -10,7 +10,9 @@ const CallLogs = () => {
         const fetchCalls = async () => {
             try {
                 const response = await api.get('/calls');
-                setCalls(response.data);
+                // Handle both array and object responses
+                const callsData = Array.isArray(response.data) ? response.data : (response.data.calls || []);
+                setCalls(callsData);
             } catch (error) {
                 console.error('Error fetching calls:', error);
             } finally {
