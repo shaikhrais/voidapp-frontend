@@ -7,7 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
-import Dialer from './pages/Dialer';
+import DialerLayout from './pages/DialerLayout';
 import AdminDashboard from './pages/AdminDashboard';
 import Agencies from './pages/Agencies';
 import AgencyDashboard from './pages/AgencyDashboard';
@@ -47,7 +47,7 @@ function App() {
             </ProtectedRoute>
           }>
             <Route index element={<Dashboard />} />
-            <Route path="dialer" element={<Dialer />} />
+            <Route path="dialer" element={<DialerLayout />} />
             <Route path="numbers" element={<MyNumbers />} />
             <Route path="numbers/buy" element={<BuyNumber />} />
             <Route path="calls" element={<CallLogs />} />
