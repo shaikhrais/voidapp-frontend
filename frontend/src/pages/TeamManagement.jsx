@@ -215,6 +215,20 @@ const TeamManagement = () => {
                                     ].map((perm) => (
                                         <div
                                             key={perm.key}
+                                            onClick={async () => {
+                                                // Toggle permission instantly
+                                                const newValue = member[perm.key] ? 0 : 1;
+                                                try {
+                                                    await api.put(`/business/team/${member.id}`, {
+                                                        [perm.key]: newValue
+                                                    });
+                                                    // Update local state
+                                                    fetchTeam();
+                                                } catch (error) {
+                                                    console.error('Error updating permission:', error);
+                                                    alert('Failed to update permission');
+                                                }
+                                            }}
                                             style={{
                                                 padding: '0.5rem',
                                                 background: member[perm.key] ? '#10b98120' : '#64748b20',
@@ -222,6 +236,17 @@ const TeamManagement = () => {
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: '0.5rem',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s',
+                                                border: '1px solid transparent',
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.borderColor = member[perm.key] ? '#10b981' : '#64748b';
+                                                e.currentTarget.style.transform = 'scale(1.02)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.borderColor = 'transparent';
+                                                e.currentTarget.style.transform = 'scale(1)';
                                             }}
                                         >
                                             <div style={{

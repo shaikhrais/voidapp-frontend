@@ -218,67 +218,12 @@ const Dialer = () => {
             <div style={{
                 background: '#1e293b',
                 borderRadius: '24px',
-                padding: 'clamp(1.5rem, 4vw, 2.5rem)',
-                maxWidth: '500px',
+                padding: 'clamp(0.3rem, 0.8vw, 0.5rem)',
+                maxWidth: '230px',
                 width: '100%',
                 border: '1px solid #334155',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
             }}>
-                {/* Header */}
-                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                    <div style={{
-                        width: 'clamp(60px, 15vw, 80px)',
-                        height: 'clamp(60px, 15vw, 80px)',
-                        margin: '0 auto 1rem',
-                        background: inCall ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
-                            calling ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' :
-                                deviceReady ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' :
-                                    'linear-gradient(135deg, #64748b 0%, #475569 100%)',
-                        borderRadius: '50%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        boxShadow: '0 10px 30px rgba(102, 126, 234, 0.4)',
-                        animation: calling ? 'pulse 1.5s ease-in-out infinite' : 'none',
-                    }}>
-                        <Phone size={window.innerWidth < 400 ? 30 : 40} color="white" />
-                    </div>
-                    <h2 style={{
-                        fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
-                        fontWeight: '700',
-                        color: '#f1f5f9',
-                        marginBottom: '0.5rem',
-                    }}>
-                        {inCall ? 'In Call' : calling ? 'Calling...' : deviceReady ? 'Dialer' : 'Connecting...'}
-                    </h2>
-                    {inCall && (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.5rem',
-                            color: '#10b981',
-                            fontSize: '0.875rem',
-                        }}>
-                            <Clock size={16} />
-                            <span>{formatDuration(callDuration)}</span>
-                        </div>
-                    )}
-                    {error && (
-                        <div style={{
-                            marginTop: '0.5rem',
-                            padding: '0.5rem',
-                            background: 'rgba(239, 68, 68, 0.1)',
-                            border: '1px solid #ef4444',
-                            borderRadius: '6px',
-                            color: '#ef4444',
-                            fontSize: '0.75rem',
-                        }}>
-                            {error}
-                        </div>
-                    )}
-                </div>
-
                 {/* Number Selector */}
                 {myNumbers.length > 0 && !inCall && (
                     <div style={{ marginBottom: '1rem', position: 'relative' }}>
@@ -359,8 +304,8 @@ const Dialer = () => {
                 {/* Phone Number Display */}
                 <div style={{
                     background: '#0f172a',
-                    borderRadius: '12px',
-                    padding: 'clamp(1rem, 3vw, 1.5rem)',
+                    borderRadius: '1.2px',
+                    padding: 'clamp(0.1rem, 0.3vw, 0.15rem)',
                     marginBottom: '1.5rem',
                     minHeight: 'clamp(60px, 15vw, 80px)',
                     display: 'flex',
@@ -369,7 +314,7 @@ const Dialer = () => {
                     border: '1px solid #334155',
                 }}>
                     <div style={{
-                        fontSize: 'clamp(1.5rem, 5vw, 2rem)',
+                        fontSize: 'clamp(0.6rem, 2vw, 0.8rem)',
                         fontWeight: '600',
                         color: phoneNumber ? '#f1f5f9' : '#64748b',
                         letterSpacing: '0.05em',
@@ -393,8 +338,8 @@ const Dialer = () => {
                             style={{
                                 background: '#334155',
                                 border: '1px solid #475569',
-                                borderRadius: '12px',
-                                padding: 'clamp(0.75rem, 3vw, 1.25rem)',
+                                borderRadius: '1.2px',
+                                padding: 'clamp(0.075rem, 0.3vw, 0.125rem)',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
                                 aspectRatio: '1',
