@@ -6,6 +6,7 @@ import voiceRoutes from './routes/voice.js';
 import adminRoutes from './routes/admin.js';
 import agencyRoutes from './routes/agency.js';
 import businessRoutes from './routes/business.js';
+import { createUsageTracker } from './helpers/twilioUsage.js';
 
 const app = new Hono();
 
@@ -335,6 +336,55 @@ app.get('/api/calls/recent', async (c) => {
     } catch (error) {
         console.error('Error fetching recent calls:', error);
         return c.json({ error: 'Failed to fetch calls' }, 500);
+    }
+});
+
+// Organization Usage Analytics
+app.get('/api/organizations/:id/usage', async (c) => {
+    try {
+        const { id } = c.req.param();
+        const authHeader = c.req.header('Authorization');
+        if (!authHeader) return c.json({ error: 'Auth required' }, 401);
+
+        const token = authHeader.replace('Bearer ', '');
+        const payload = await verifyToken(token, c.env.JWT_SECRET);
+        const db = c.env.DB;
+
+        // Verify user has access to this organization
+        const user = await db.prepare('SELECT id, organization_id FROM users WHERE id = ?').bind(payload.id).first();
+        if (!user) return c.json({ error: 'User not found' }, 401);
+
+        // Check if user can access this organization (same org or has permission)
+        if (user.organization_id !== id) {
+            // TODO: Add hierarchical permission check for agencies/admins
+            return c.json({ error: 'Access denied' }, 403);
+        }
+
+        // Get date range from query params (default to last 30 days)
+        const now = Math.floor(Date.now() / 1000);
+        const thirtyDaysAgo = now - (30 * 24 * 60 * 60);
+
+        const startDate = parseInt(c.req.query('start')) || thirtyDaysAgo;
+        const endDate = parseInt(c.req.query('end')) || now;
+
+        console.log(`📊 Fetching usage for org ${id} from ${new Date(startDate * 1000).toISOString()} to ${new Date(endDate * 1000).toISOString()}`);
+
+        // Create usage tracker (Note: twilioClient would need to be passed from env)
+        // For now, we'll use the database-only version
+        const usageTracker = createUsageTracker(db, null);
+        const usage = await usageTracker.getOrganizationUsage(id, startDate, endDate);
+
+        // Get top users
+        const topUsers = await usageTracker.getTopUsers(id, startDate, endDate, 5);
+
+        return c.json({
+            usage,
+            topUsers,
+            organizationId: id
+        });
+    } catch (error) {
+        console.error('Error fetching organization usage:', error);
+        return c.json({ error: 'Failed to fetch usage' }, 500);
     }
 });
 
