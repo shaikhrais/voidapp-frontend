@@ -1,0 +1,15 @@
+{
+    "name": "voipapp-frontend-tests",
+    "version": "1.0.0",
+    "description": "Automated frontend E2E tests for VOIP SaaS Platform",
+    "scripts": {
+        "test": "node frontend.test.js",
+        "test:watch": "nodemon frontend.test.js"
+    },
+    "dependencies": {
+        "puppeteer": "^21.6.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.0"
+    }
+}
