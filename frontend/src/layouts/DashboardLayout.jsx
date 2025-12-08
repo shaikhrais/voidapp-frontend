@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Phone, PhoneCall, MessageSquare, Settings, LogOut, User, Menu } from 'lucide-react';
+import { LayoutDashboard, Phone, PhoneCall, MessageSquare, Settings, LogOut, User, Menu, Shield, Building2 } from 'lucide-react';
 
 const DashboardLayout = () => {
     const { user, logout } = useAuth();
@@ -22,6 +22,14 @@ const DashboardLayout = () => {
         { path: '/dashboard/sms', label: 'SMS Logs', icon: MessageSquare },
         { path: '/dashboard/settings', label: 'Settings', icon: Settings },
     ];
+
+    // Add admin menu items for super admin
+    const adminItems = user?.role === 'super_admin' ? [
+        { path: '/dashboard/admin', label: 'Admin Dashboard', icon: Shield },
+        { path: '/dashboard/admin/agencies', label: 'Agencies', icon: Building2 },
+    ] : [];
+
+    const allNavItems = [...adminItems, ...navItems];
 
     const styles = {
         container: {

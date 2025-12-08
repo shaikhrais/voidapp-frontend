@@ -8,6 +8,8 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Dialer from './pages/Dialer';
+import AdminDashboard from './pages/AdminDashboard';
+import Agencies from './pages/Agencies';
 import MyNumbers from './pages/MyNumbers';
 import BuyNumber from './pages/BuyNumber';
 import CallLogs from './pages/CallLogs';
@@ -49,6 +51,8 @@ function App() {
             <Route path="calls" element={<CallLogs />} />
             <Route path="sms" element={<SMSLogs />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="admin" element={<AdminDashboard />} />
+            <Route path="admin/agencies" element={<Agencies />} />
             {/* Add other routes here later */}
           </Route>
 
