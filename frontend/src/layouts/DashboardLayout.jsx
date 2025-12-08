@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Phone, PhoneCall, MessageSquare, Settings, LogOut, User, Menu, Shield, Building2 } from 'lucide-react';
+import { LayoutDashboard, Phone, PhoneCall, MessageSquare, Settings, LogOut, User, Menu, Shield, Building2, Users } from 'lucide-react';
 
 const DashboardLayout = () => {
     const { user, logout } = useAuth();
@@ -271,6 +271,30 @@ const DashboardLayout = () => {
                     <div style={styles.userCard}>
                         <div style={styles.avatar}>
                             <User size={20} color="white" />
+                        </div>
+                        <div style={styles.userInfo}>
+                            {/* Role Badge */}
+                            <div style={{
+                                padding: '0.25rem 0.5rem',
+                                background: user?.role === 'super_admin' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' :
+                                    user?.role === 'agency_admin' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
+                                        user?.role === 'business_admin' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' :
+                                            'linear-gradient(135deg, #64748b 0%, #475569 100%)',
+                                borderRadius: '6px',
+                                marginBottom: '0.5rem',
+                                display: sidebarOpen ? 'inline-block' : 'none',
+                            }}>
+                                <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: '600' }}>
+                                    {user?.role === 'super_admin' ? '👑 Super Admin' :
+                                        user?.role === 'agency_admin' ? '🏢 Agency Admin' :
+                                            user?.role === 'business_admin' ? '💼 Business Admin' :
+                                                '👤 User'}
+                                </span>
+                            </div>
+                            <div style={styles.userName}>User</div>
+                            <div style={styles.userEmail}>{user?.email || 'user@example.com'}</div>
+                        </div>
+                        <button
                             style={styles.logoutBtn}
                             onClick={handleLogout}
                             onMouseEnter={(e) => {

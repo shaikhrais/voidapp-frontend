@@ -55,9 +55,12 @@ const Dashboard = () => {
                     messages: usageRes.data.messages || 0
                 });
             } catch (error) {
-                console.error('Error fetching dashboard data:', error);
+                console.error('❌ Dashboard Error:', error);
+                console.error('❌ Error Response:', error.response?.data);
+                console.error('❌ Error Status:', error.response?.status);
             } finally {
                 setLoading(false);
+                console.log('✅ Dashboard: Data fetch complete');
             }
         };
 

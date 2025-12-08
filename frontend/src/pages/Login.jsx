@@ -17,8 +17,17 @@ const Login = () => {
         setLoading(true);
 
         try {
-            await login(email, password);
-            navigate('/dashboard');
+            const response = await login(email, password);
+            console.log('✅ Login successful, user role:', response.user.role);
+
+            // Redirect based on role
+            if (response.user.role === 'super_admin') {
+                navigate('/dashboard/admin');
+            } else if (response.user.role === 'agency_admin') {
+                navigate('/dashboard/agency');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err) {
             setError(err.response?.data?.error || 'Invalid email or password');
         } finally {
