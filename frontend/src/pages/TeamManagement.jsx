@@ -8,10 +8,14 @@ const TeamManagement = () => {
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false);
     const [selectedMember, setSelectedMember] = useState(null);
+    const [creationMethod, setCreationMethod] = useState('create'); // 'invite' or 'create'
     const [inviteData, setInviteData] = useState({
         email: '',
         role: 'user',
+        full_name: '',
+        password: '',
     });
+    const [createdUser, setCreatedUser] = useState(null); // Store created user info
 
     useEffect(() => {
         fetchTeam();
@@ -31,10 +35,27 @@ const TeamManagement = () => {
     const handleInvite = async (e) => {
         e.preventDefault();
         try {
-            const response = await api.post('/business/team/invite', inviteData);
-            alert(`Invitation sent! Link: ${response.data.invitationLink}`);
+            if (creationMethod === 'create') {
+                // Direct user creation
+                const response = await api.post('/business/team/create', {
+                    email: inviteData.email,
+                    role: inviteData.role,
+                    full_name: inviteData.full_name,
+                    password: inviteData.password || undefined
+                });
+                setCreatedUser(response.data.user);
+                alert(response.data.message);
+                fetchTeam(); // Refresh team list
+            } else {
+                // Invitation method
+                const response = await api.post('/business/team/invite', {
+                    email: inviteData.email,
+                    role: inviteData.role
+                });
+                alert(`Invitation sent! Link: ${response.data.invitationLink}`);
+            }
             setShowInviteModal(false);
-            setInviteData({ email: '', role: 'user' });
+            setInviteData({ email: '', role: 'user', full_name: '', password: '' });
         } catch (error) {
             console.error('Error inviting user:', error);
             alert(error.response?.data?.error || 'Failed to send invitation');
@@ -263,6 +284,53 @@ const TeamManagement = () => {
                         </div>
 
                         <form onSubmit={handleInvite} style={{ padding: '1.5rem' }}>
+                            {/* Method Toggle */}
+                            <div style={{
+                                display: 'flex',
+                                gap: '0.5rem',
+                                marginBottom: '1.5rem',
+                                background: '#0f172a',
+                                padding: '0.25rem',
+                                borderRadius: '8px'
+                            }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setCreationMethod('create')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.75rem',
+                                        background: creationMethod === 'create' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        color: 'white',
+                                        fontSize: '0.875rem',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    ✨ Create Directly
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setCreationMethod('invite')}
+                                    style={{
+                                        flex: 1,
+                                        padding: '0.75rem',
+                                        background: creationMethod === 'invite' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        color: 'white',
+                                        fontSize: '0.875rem',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                >
+                                    📧 Send Invite
+                                </button>
+                            </div>
+
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                                 <div>
                                     <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
@@ -285,6 +353,54 @@ const TeamManagement = () => {
                                     />
                                 </div>
 
+                                {creationMethod === 'create' && (
+                                    <>
+                                        <div>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                                                Full Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={inviteData.full_name}
+                                                onChange={(e) => setInviteData({ ...inviteData, full_name: e.target.value })}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.75rem',
+                                                    background: '#0f172a',
+                                                    border: '1px solid #334155',
+                                                    borderRadius: '8px',
+                                                    color: '#f1f5f9',
+                                                    fontSize: '0.875rem',
+                                                }}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                                                Password (leave empty for auto-generated)
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={inviteData.password}
+                                                onChange={(e) => setInviteData({ ...inviteData, password: e.target.value })}
+                                                placeholder="Auto-generate if empty"
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '0.75rem',
+                                                    background: '#0f172a',
+                                                    border: '1px solid #334155',
+                                                    borderRadius: '8px',
+                                                    color: '#f1f5f9',
+                                                    fontSize: '0.875rem',
+                                                }}
+                                            />
+                                            <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem' }}>
+                                                Leave empty to auto-generate a temporary password
+                                            </p>
+                                        </div>
+                                    </>
+                                )}
+
                                 <div>
                                     <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                                         Role *
@@ -306,6 +422,32 @@ const TeamManagement = () => {
                                         <option value="business_admin">Admin</option>
                                     </select>
                                 </div>
+
+                                {creationMethod === 'create' && (
+                                    <div style={{
+                                        padding: '1rem',
+                                        background: '#10b98110',
+                                        border: '1px solid #10b98130',
+                                        borderRadius: '8px',
+                                        color: '#10b981',
+                                        fontSize: '0.875rem'
+                                    }}>
+                                        ✨ User will be created immediately and can login right away!
+                                    </div>
+                                )}
+
+                                {creationMethod === 'invite' && (
+                                    <div style={{
+                                        padding: '1rem',
+                                        background: '#3b82f610',
+                                        border: '1px solid #3b82f630',
+                                        borderRadius: '8px',
+                                        color: '#3b82f6',
+                                        fontSize: '0.875rem'
+                                    }}>
+                                        📧 User will receive an invitation link to complete registration
+                                    </div>
+                                )}
                             </div>
 
                             <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
@@ -337,7 +479,7 @@ const TeamManagement = () => {
                                         cursor: 'pointer',
                                     }}
                                 >
-                                    Send Invitation
+                                    {creationMethod === 'create' ? '✨ Create User' : '📧 Send Invitation'}
                                 </button>
                             </div>
                         </form>
