@@ -4,6 +4,8 @@ import { SignJWT, jwtVerify } from 'jose';
 import syncRoutes from './routes/sync.js';
 import voiceRoutes from './routes/voice.js';
 import adminRoutes from './routes/admin.js';
+import agencyRoutes from './routes/agency.js';
+import businessRoutes from './routes/business.js';
 
 const app = new Hono();
 
@@ -243,6 +245,12 @@ app.route('/api/voice', voiceRoutes);
 
 // Admin routes (Super Admin only)
 app.route('/api/admin', adminRoutes);
+
+// Agency routes (Agency Admin)
+app.route('/api/agency', agencyRoutes);
+
+// Business routes (Business Admin)
+app.route('/api/business', businessRoutes);
 
 // Numbers endpoint
 app.get('/api/numbers', async (c) => {

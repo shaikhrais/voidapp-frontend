@@ -217,7 +217,7 @@ const DashboardLayout = () => {
 
                 <nav style={styles.nav}>
                     <ul style={styles.navList}>
-                        {navItems.map((item) => {
+                        {allNavItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = location.pathname === item.path;
                             return (
