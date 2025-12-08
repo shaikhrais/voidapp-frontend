@@ -145,15 +145,19 @@ voice.post('/call', async (c) => {
 // TwiML endpoint for handling calls
 voice.post('/twiml', async (c) => {
     try {
-        console.log('TwiML endpoint called');
-        console.log('Headers:', c.req.header());
+        console.log('=== TWIML ENDPOINT CALLED ===');
+        console.log('📥 Request Headers:', c.req.header());
 
         const body = await c.req.parseBody();
-        console.log('Request body:', body);
+        console.log('📦 Request Body:', body);
 
         const To = body.To || body.to;
-        const From = body.From || body.from; // Get the selected number from frontend
-        console.log('Calling to:', To, 'from:', From);
+        const From = body.From || body.from;
+
+        console.log('📞 To Number:', To);
+        console.log('📱 From Number (Selected):', From);
+        console.log('🔍 From parameter exists:', !!From);
+        console.log('🔍 To parameter exists:', !!To);
 
         if (!To) {
             console.error('No To parameter received');
@@ -166,8 +170,15 @@ voice.post('/twiml', async (c) => {
             });
         }
 
-        // Use the From parameter as callerId, or fallback to default
-        const callerId = From || '+16479302223';
+        // IMPORTANT: No fallback! If From is missing, we want to see the error
+        if (!From) {
+            console.error('⚠️ WARNING: No From parameter received! This will cause caller ID issues.');
+            console.error('⚠️ Call will proceed but may use default Twilio number');
+        }
+
+        const callerId = From; // NO FALLBACK - let it fail if From is missing
+
+        console.log('🎯 Using Caller ID:', callerId);
 
         const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -176,7 +187,8 @@ voice.post('/twiml', async (c) => {
     </Dial>
 </Response>`;
 
-        console.log('Returning TwiML:', twiml);
+        console.log('📤 Generated TwiML:', twiml);
+        console.log('============================');
         return c.text(twiml, 200, {
             'Content-Type': 'text/xml'
         });

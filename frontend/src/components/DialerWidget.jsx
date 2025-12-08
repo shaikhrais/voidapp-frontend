@@ -130,29 +130,51 @@ const DialerWidget = ({ onCallLogged }) => {
                 From: selectedNumber.phone_number,
             };
 
-            console.log('Making call from:', selectedNumber.phone_number, 'to:', phoneNumber);
+            console.log('=== CALL INITIATION DEBUG ===');
+            console.log('📞 Calling TO:', phoneNumber);
+            console.log('📱 Calling FROM:', selectedNumber.phone_number);
+            console.log('📋 Selected Number Object:', selectedNumber);
+            console.log('📦 Params being sent to Twilio:', params);
+            console.log('🔧 Device ready:', deviceReady);
+            console.log('============================');
 
             const conn = await device.connect({ params });
+
+            console.log('=== TWILIO CONNECTION DEBUG ===');
+            console.log('✅ Connection established');
+            console.log('📞 Connection SID:', conn.parameters.CallSid);
+            console.log('📋 Connection Parameters:', conn.parameters);
+            console.log('================================');
+
             setConnection(conn);
             setupConnectionHandlers(conn);
 
             // Log call to database
             try {
-                await api.post('/calls/log', {
+                const logData = {
                     sid: conn.parameters.CallSid,
                     from_number: selectedNumber.phone_number,
                     to_number: phoneNumber,
                     direction: 'outbound'
-                });
+                };
+
+                console.log('💾 Logging call to database:', logData);
+
+                const logResponse = await api.post('/api/calls/log', logData);
+
+                console.log('✅ Call logged successfully:', logResponse.data);
+
                 // Notify parent to refresh recent calls
                 if (onCallLogged) {
+                    console.log('🔄 Triggering recent calls refresh...');
                     onCallLogged();
                 }
             } catch (logError) {
-                console.error('Error logging call:', logError);
+                console.error('❌ Error logging call:', logError);
+                console.error('❌ Log error details:', logError.response?.data || logError.message);
             }
         } catch (error) {
-            console.error('Call failed:', error);
+            console.error('❌ Call failed:', error);
             setError('Call failed: ' + error.message);
             setCalling(false);
         }

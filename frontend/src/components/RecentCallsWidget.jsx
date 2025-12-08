@@ -11,11 +11,18 @@ const RecentCallsWidget = ({ refreshTrigger }) => {
 
     const fetchRecentCalls = async () => {
         try {
+            console.log('🔄 Fetching recent calls...');
             setLoadingCalls(true);
-            const response = await api.get('/calls/recent');
+
+            const response = await api.get('/api/calls/recent');
+
+            console.log('✅ Recent calls response:', response.data);
+            console.log('📊 Number of calls:', response.data.calls?.length || 0);
+
             setRecentCalls(response.data.calls || []);
         } catch (error) {
-            console.error('Error fetching recent calls:', error);
+            console.error('❌ Error fetching recent calls:', error);
+            console.error('❌ Error details:', error.response?.data || error.message);
         } finally {
             setLoadingCalls(false);
         }
