@@ -26,7 +26,7 @@ admin.use('*', async (c, next) => {
         }
 
         // Check if super admin
-        if (user.role !== 'super_admin') {
+        if (user.role !== 'super_admin' && user.role !== 'admin') {
             return c.json({ error: 'Super admin access required' }, 403);
         }
 

@@ -24,7 +24,7 @@ const DashboardLayout = () => {
     ];
 
     // Add admin menu items for super admin
-    const adminItems = user?.role === 'super_admin' ? [
+    const adminItems = (user?.role === 'super_admin' || user?.role === 'admin') ? [
         { path: '/dashboard/admin', label: 'Admin Dashboard', icon: Shield },
         { path: '/dashboard/admin/agencies', label: 'Agencies', icon: Building2 },
     ] : [];
