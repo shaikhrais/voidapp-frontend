@@ -3,6 +3,7 @@ import { cors } from 'hono/cors';
 import { SignJWT, jwtVerify } from 'jose';
 import syncRoutes from './routes/sync.js';
 import voiceRoutes from './routes/voice.js';
+import adminRoutes from './routes/admin.js';
 
 const app = new Hono();
 
@@ -239,6 +240,9 @@ app.route('/api/sync', syncRoutes);
 
 // Voice routes (Twilio Voice SDK)
 app.route('/api/voice', voiceRoutes);
+
+// Admin routes (Super Admin only)
+app.route('/api/admin', adminRoutes);
 
 // Numbers endpoint
 app.get('/api/numbers', async (c) => {
