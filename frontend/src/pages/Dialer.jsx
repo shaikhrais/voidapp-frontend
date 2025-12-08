@@ -11,6 +11,8 @@ const Dialer = () => {
     const [myNumbers, setMyNumbers] = useState([]);
     const [selectedNumber, setSelectedNumber] = useState(null);
     const [showNumberSelect, setShowNumberSelect] = useState(false);
+    const [recentCalls, setRecentCalls] = useState([]);
+    const [loadingCalls, setLoadingCalls] = useState(false);
     const [device, setDevice] = useState(null);
     const [connection, setConnection] = useState(null);
     const [muted, setMuted] = useState(false);
@@ -20,6 +22,7 @@ const Dialer = () => {
 
     useEffect(() => {
         fetchMyNumbers();
+        fetchRecentCalls();
         initializeDevice();
 
         return () => {
@@ -42,6 +45,18 @@ const Dialer = () => {
             }
         } catch (error) {
             console.error('Error fetching numbers:', error);
+        }
+    };
+
+    const fetchRecentCalls = async () => {
+        try {
+            setLoadingCalls(true);
+            const response = await api.get('/calls/recent');
+            setRecentCalls(response.data.calls || []);
+        } catch (error) {
+            console.error('Error fetching recent calls:', error);
+        } finally {
+            setLoadingCalls(false);
         }
     };
 
@@ -168,11 +183,28 @@ const Dialer = () => {
 
             const params = {
                 To: phoneNumber,
+                From: selectedNumber.phone_number, // ✅ Use selected number as caller ID
             };
+
+            console.log('Making call from:', selectedNumber.phone_number, 'to:', phoneNumber);
 
             const conn = await device.connect({ params });
             setConnection(conn);
             setupConnectionHandlers(conn);
+
+            // Log call to database
+            try {
+                await api.post('/calls/log', {
+                    sid: conn.parameters.CallSid,
+                    from_number: selectedNumber.phone_number,
+                    to_number: phoneNumber,
+                    direction: 'outbound'
+                });
+                // Refresh recent calls after logging
+                fetchRecentCalls();
+            } catch (logError) {
+                console.error('Error logging call:', logError);
+            }
         } catch (error) {
             console.error('Call failed:', error);
             setError('Call failed: ' + error.message);
@@ -219,7 +251,7 @@ const Dialer = () => {
                 background: '#1e293b',
                 borderRadius: '24px',
                 padding: 'clamp(0.3rem, 0.8vw, 0.5rem)',
-                maxWidth: '230px',
+                maxWidth: '300px',
                 width: '100%',
                 border: '1px solid #334155',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
@@ -314,7 +346,7 @@ const Dialer = () => {
                     border: '1px solid #334155',
                 }}>
                     <div style={{
-                        fontSize: 'clamp(0.6rem, 2vw, 0.8rem)',
+                        fontSize: 'clamp(1.5rem, 5vw, 2rem)',
                         fontWeight: '600',
                         color: phoneNumber ? '#f1f5f9' : '#64748b',
                         letterSpacing: '0.05em',
@@ -506,6 +538,47 @@ const Dialer = () => {
                         </div>
                     </div>
                 )}
+
+                {/* Recent Calls */}
+                <div style={{
+                    marginTop: '1rem',
+                    background: '#0f172a',
+                    borderRadius: '8px',
+                    padding: '0.75rem',
+                    border: '1px solid #334155',
+                }}>
+                    <h3 style={{
+                        fontSize: '0.875rem',
+                        fontWeight: '600',
+                        color: '#f1f5f9',
+                        marginBottom: '0.75rem',
+                    }}>
+                        📞 Recent Calls
+                    </h3>
+                    {loadingCalls ? (
+                        <div style={{ textAlign: 'center', color: '#64748b', fontSize: '0.75rem', padding: '1rem' }}>Loading...</div>
+                    ) : recentCalls.length === 0 ? (
+                        <div style={{ textAlign: 'center', color: '#64748b', fontSize: '0.75rem', padding: '1rem' }}>No recent calls</div>
+                    ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            {recentCalls.slice(0, 5).map((call) => (
+                                <div key={call.id} style={{ padding: '0.5rem', background: '#1e293b', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', transition: 'all 0.2s' }} onClick={() => setPhoneNumber(call.direction === 'outbound' ? call.to_number : call.from_number)} onMouseEnter={(e) => e.currentTarget.style.background = '#334155'} onMouseLeave={(e) => e.currentTarget.style.background = '#1e293b'}>
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ fontSize: '0.75rem', fontWeight: '600', color: '#f1f5f9' }}>
+                                            {call.direction === 'outbound' ? '📞 ' : '📱 '}{call.direction === 'outbound' ? call.to_number : call.from_number}
+                                        </div>
+                                        <div style={{ fontSize: '0.625rem', color: '#94a3b8', marginTop: '0.125rem' }}>
+                                            {new Date(call.created_at * 1000).toLocaleString()}
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: '0.625rem', padding: '0.25rem 0.5rem', borderRadius: '4px', background: call.status === 'completed' ? '#10b98120' : call.status === 'failed' ? '#ef444420' : '#64748b20', color: call.status === 'completed' ? '#10b981' : call.status === 'failed' ? '#ef4444' : '#94a3b8', fontWeight: '600' }}>
+                                        {call.duration ? `${call.duration}s` : call.status}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
 
             {/* Keyframes */}

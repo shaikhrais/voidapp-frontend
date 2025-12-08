@@ -285,6 +285,59 @@ app.get('/api/numbers', async (c) => {
     }
 });
 
+// Call Logging Endpoints
+app.post('/api/calls/log', async (c) => {
+    try {
+        const authHeader = c.req.header('Authorization');
+        if (!authHeader) return c.json({ error: 'Auth required' }, 401);
+        const token = authHeader.replace('Bearer ', '');
+        const payload = await verifyToken(token, c.env.JWT_SECRET);
+        const db = c.env.DB;
+        const user = await db.prepare('SELECT id, organization_id FROM users WHERE id = ?').bind(payload.id).first();
+        if (!user) return c.json({ error: 'User not found' }, 401);
+        const body = await c.req.json();
+        const { sid, from_number, to_number, direction } = body;
+        if (!sid || !from_number || !to_number) return c.json({ error: 'Missing fields' }, 400);
+        const callId = `call-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        await db.prepare(`INSERT INTO calls (id, sid, from_number, to_number, status, direction, organization_id, user_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).bind(callId, sid, from_number, to_number, 'initiated', direction || 'outbound', user.organization_id, user.id, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000)).run();
+        return c.json({ success: true, callId });
+    } catch (error) {
+        console.error('Error logging call:', error);
+        return c.json({ error: 'Failed to log call' }, 500);
+    }
+});
+
+app.post('/api/calls/status', async (c) => {
+    try {
+        const body = await c.req.json();
+        const { CallSid, CallStatus, CallDuration } = body;
+        if (!CallSid) return c.json({ error: 'Missing CallSid' }, 400);
+        const db = c.env.DB;
+        await db.prepare(`UPDATE calls SET status = ?, duration = ?, updated_at = ? WHERE sid = ?`).bind(CallStatus, CallDuration || 0, Math.floor(Date.now() / 1000), CallSid).run();
+        return c.json({ success: true });
+    } catch (error) {
+        console.error('Error updating call status:', error);
+        return c.json({ error: 'Failed to update call status' }, 500);
+    }
+});
+
+app.get('/api/calls/recent', async (c) => {
+    try {
+        const authHeader = c.req.header('Authorization');
+        if (!authHeader) return c.json({ error: 'Auth required' }, 401);
+        const token = authHeader.replace('Bearer ', '');
+        const payload = await verifyToken(token, c.env.JWT_SECRET);
+        const db = c.env.DB;
+        const user = await db.prepare('SELECT id, organization_id FROM users WHERE id = ?').bind(payload.id).first();
+        if (!user) return c.json({ error: 'User not found' }, 401);
+        const result = await db.prepare(`SELECT c.id, c.sid, c.from_number, c.to_number, c.status, c.direction, c.duration, c.created_at, u.email as user_email FROM calls c LEFT JOIN users u ON c.user_id = u.id WHERE c.organization_id = ? ORDER BY c.created_at DESC LIMIT 50`).bind(user.organization_id).all();
+        return c.json({ calls: result.results || [] });
+    } catch (error) {
+        console.error('Error fetching recent calls:', error);
+        return c.json({ error: 'Failed to fetch calls' }, 500);
+    }
+});
+
 // Placeholder routes
 app.all('/api/calls*', (c) => c.json({ message: 'Calls - Coming soon' }, 501));
 app.all('/api/sms*', (c) => c.json({ message: 'SMS - Coming soon' }, 501));

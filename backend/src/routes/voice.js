@@ -152,7 +152,8 @@ voice.post('/twiml', async (c) => {
         console.log('Request body:', body);
 
         const To = body.To || body.to;
-        console.log('Calling to:', To);
+        const From = body.From || body.from; // Get the selected number from frontend
+        console.log('Calling to:', To, 'from:', From);
 
         if (!To) {
             console.error('No To parameter received');
@@ -165,9 +166,12 @@ voice.post('/twiml', async (c) => {
             });
         }
 
+        // Use the From parameter as callerId, or fallback to default
+        const callerId = From || '+16479302223';
+
         const twiml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-    <Dial callerId="+16479302223">
+    <Dial callerId="${callerId}">
         <Number>${To}</Number>
     </Dial>
 </Response>`;
@@ -190,9 +194,34 @@ voice.post('/twiml', async (c) => {
 
 // Call status callback
 voice.post('/status', async (c) => {
-    const body = await c.req.parseBody();
-    console.log('Call status:', body);
-    return c.text('OK');
+    try {
+        const body = await c.req.parseBody();
+        console.log('Call status:', body);
+
+        const callSid = body.CallSid;
+        const callStatus = body.CallStatus;
+        const callDuration = body.CallDuration;
+
+        if (callSid) {
+            const db = c.env.DB;
+            await db.prepare(`
+                UPDATE calls 
+                SET status = ?, duration = ?, updated_at = ?
+                WHERE sid = ?
+            `).bind(
+                callStatus,
+                callDuration || 0,
+                Math.floor(Date.now() / 1000),
+                callSid
+            ).run();
+            console.log('Updated call status in database:', callSid, callStatus);
+        }
+
+        return c.text('OK');
+    } catch (error) {
+        console.error('Status callback error:', error);
+        return c.text('Error', 500);
+    }
 });
 
 export default voice;
