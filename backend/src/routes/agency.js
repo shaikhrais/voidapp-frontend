@@ -26,7 +26,7 @@ agency.use('*', async (c, next) => {
         }
 
         // Check if agency admin
-        if (user.role !== 'agency_admin' && user.role !== 'super_admin') {
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
             return c.json({ error: 'Agency admin access required' }, 403);
         }
 
@@ -191,7 +191,7 @@ agency.post('/customers', async (c) => {
             userId,
             email,
             hashedPassword,
-            'business_admin',
+            'admin',
             orgId,
             Math.floor(Date.now() / 1000),
             Math.floor(Date.now() / 1000)

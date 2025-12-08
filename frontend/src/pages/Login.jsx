@@ -28,10 +28,9 @@ const Login = () => {
 
     return (
         <div style={{
-            height: '100vh',
+            minHeight: '100vh',
             display: 'flex',
             background: '#0f172a',
-            overflow: 'hidden',
         }}>
             {/* Left Side - Branding */}
             <div style={{
@@ -127,12 +126,13 @@ const Login = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '2rem',
+                padding: '0',
                 background: '#0f172a',
             }}>
                 <div style={{
                     width: '100%',
-                    maxWidth: '400px',
+                    maxWidth: '100%',
+                    padding: '2rem',
                 }}>
                     {/* Header */}
                     <div style={{ marginBottom: '2rem' }}>
@@ -276,12 +276,12 @@ const Login = () => {
                             type="submit"
                             disabled={loading}
                             style={{
-                                padding: '1rem',
+                                padding: '0.875rem',
                                 background: loading ? '#64748b' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                                 color: 'white',
                                 border: 'none',
-                                borderRadius: '12px',
-                                fontSize: '1rem',
+                                borderRadius: '8px',
+                                fontSize: '0.9375rem',
                                 fontWeight: '600',
                                 cursor: loading ? 'not-allowed' : 'pointer',
                                 transition: 'all 0.3s',
@@ -305,8 +305,8 @@ const Login = () => {
                             {loading ? (
                                 <>
                                     <div style={{
-                                        width: '20px',
-                                        height: '20px',
+                                        width: '18px',
+                                        height: '18px',
                                         border: '2px solid rgba(255,255,255,0.3)',
                                         borderTop: '2px solid white',
                                         borderRadius: '50%',
@@ -317,7 +317,7 @@ const Login = () => {
                             ) : (
                                 <>
                                     <span>Sign in</span>
-                                    <ArrowRight size={20} />
+                                    <ArrowRight size={18} />
                                 </>
                             )}
                         </button>
@@ -325,7 +325,7 @@ const Login = () => {
 
                     {/* Footer */}
                     <div style={{
-                        marginTop: '2rem',
+                        marginTop: '1.5rem',
                         textAlign: 'center',
                         fontSize: '0.875rem',
                         color: '#94a3b8',

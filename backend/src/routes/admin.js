@@ -199,7 +199,6 @@ admin.post('/agencies', async (c) => {
             Math.floor(Date.now() / 1000)
         ).run();
 
-        // Create user
         await db.prepare(`
             INSERT INTO users (
                 id, email, password, role, organization_id, created_at, updated_at
@@ -208,7 +207,7 @@ admin.post('/agencies', async (c) => {
             userId,
             email,
             hashedPassword,
-            'agency_admin',
+            'admin',
             orgId,
             Math.floor(Date.now() / 1000),
             Math.floor(Date.now() / 1000)

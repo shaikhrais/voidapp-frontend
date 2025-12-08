@@ -23,19 +23,19 @@ const DashboardLayout = () => {
         { path: '/dashboard/settings', label: 'Settings', icon: Settings },
     ];
 
-    // Add admin menu items for super admin
-    const adminItems = (user?.role === 'super_admin' || user?.role === 'admin') ? [
+    // Add admin menu items ONLY for super admin (org-super-admin)
+    const adminItems = (user?.role === 'admin' && user?.organization_id === 'org-super-admin') ? [
         { path: '/dashboard/admin', label: 'Admin Dashboard', icon: Shield },
         { path: '/dashboard/admin/agencies', label: 'Agencies', icon: Building2 },
     ] : [];
 
-    // Add agency menu items for agency admin
-    const agencyItems = user?.role === 'agency_admin' ? [
+    // Add agency menu items for agency admins only
+    const agencyItems = (user?.role === 'admin' && user?.organization_id?.startsWith('org-agency')) ? [
         { path: '/dashboard/agency', label: 'Agency Dashboard', icon: Building2 },
     ] : [];
 
-    // Add team management for business admin
-    const businessItems = (user?.role === 'business_admin' || user?.role === 'agency_admin') ? [
+    // Add team management for business and agency admins (not super admin)
+    const businessItems = (user?.role === 'admin' && user?.organization_id !== 'org-super-admin') ? [
         { path: '/dashboard/team', label: 'Team Management', icon: Users },
     ] : [];
 
@@ -266,18 +266,18 @@ const DashboardLayout = () => {
                             {/* Role Badge */}
                             <div style={{
                                 padding: '0.25rem 0.5rem',
-                                background: user?.role === 'admin' || user?.role === 'super_admin' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' :
-                                    user?.role === 'agency_admin' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
-                                        user?.role === 'business_admin' ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' :
+                                background: (user?.role === 'admin' && user?.organization_id === 'org-super-admin') ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' :
+                                    (user?.role === 'admin' && user?.organization_id?.startsWith('org-agency')) ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
+                                        (user?.role === 'admin' && user?.organization_id?.startsWith('org-business')) ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' :
                                             'linear-gradient(135deg, #64748b 0%, #475569 100%)',
                                 borderRadius: '6px',
                                 marginBottom: '0.5rem',
                                 display: sidebarOpen ? 'inline-block' : 'none',
                             }}>
                                 <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: '600' }}>
-                                    {user?.role === 'admin' || user?.role === 'super_admin' ? '👑 Super Admin' :
-                                        user?.role === 'agency_admin' ? '🏢 Agency Admin' :
-                                            user?.role === 'business_admin' ? '💼 Business Admin' :
+                                    {(user?.role === 'admin' && user?.organization_id === 'org-super-admin') ? '👑 Super Admin' :
+                                        (user?.role === 'admin' && user?.organization_id?.startsWith('org-agency')) ? '🏢 Agency Admin' :
+                                            (user?.role === 'admin' && user?.organization_id?.startsWith('org-business')) ? '💼 Business Admin' :
                                                 '👤 User'}
                                 </span>
                             </div>

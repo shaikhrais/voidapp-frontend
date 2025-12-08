@@ -26,7 +26,7 @@ business.use('*', async (c, next) => {
         }
 
         // Check if business admin or super admin
-        if (user.role !== 'business_admin' && user.role !== 'super_admin' && user.role !== 'agency_admin') {
+        if (user.role !== 'admin' && user.role !== 'super_admin') {
             return c.json({ error: 'Business admin access required' }, 403);
         }
 

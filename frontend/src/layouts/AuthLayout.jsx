@@ -16,7 +16,6 @@ const AuthLayout = () => {
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                 width: '100%',
-                maxWidth: '400px'
             }}>
                 <h1 style={{ textAlign: 'center', marginBottom: '1.5rem', color: '#111827' }}>VOIP SaaS</h1>
                 <Outlet />
