@@ -10,6 +10,8 @@ import Dashboard from './pages/Dashboard';
 import Dialer from './pages/Dialer';
 import AdminDashboard from './pages/AdminDashboard';
 import Agencies from './pages/Agencies';
+import AgencyDashboard from './pages/AgencyDashboard';
+import TeamManagement from './pages/TeamManagement';
 import MyNumbers from './pages/MyNumbers';
 import BuyNumber from './pages/BuyNumber';
 import CallLogs from './pages/CallLogs';
@@ -53,7 +55,8 @@ function App() {
             <Route path="settings" element={<Settings />} />
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="admin/agencies" element={<Agencies />} />
-            {/* Add other routes here later */}
+            <Route path="agency" element={<AgencyDashboard />} />
+            <Route path="team" element={<TeamManagement />} />
           </Route>
 
           <Route path="/" element={<Navigate to="/dashboard" />} />

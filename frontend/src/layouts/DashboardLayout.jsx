@@ -29,7 +29,17 @@ const DashboardLayout = () => {
         { path: '/dashboard/admin/agencies', label: 'Agencies', icon: Building2 },
     ] : [];
 
-    const allNavItems = [...adminItems, ...navItems];
+    // Add agency menu items for agency admin
+    const agencyItems = user?.role === 'agency_admin' ? [
+        { path: '/dashboard/agency', label: 'Agency Dashboard', icon: Building2 },
+    ] : [];
+
+    // Add team management for business admin
+    const businessItems = (user?.role === 'business_admin' || user?.role === 'agency_admin') ? [
+        { path: '/dashboard/team', label: 'Team Management', icon: Users },
+    ] : [];
+
+    const allNavItems = [...adminItems, ...agencyItems, ...businessItems, ...navItems];
 
     const styles = {
         container: {
