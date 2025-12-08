@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
-    role TEXT DEFAULT 'user' CHECK(role IN ('user', 'admin')),
+    role TEXT DEFAULT 'user' CHECK(role IN ('user', 'admin', 'super_admin', 'agency_admin', 'business_admin')),
     organization_id TEXT,
     reset_password_token TEXT,
     reset_password_expires INTEGER,

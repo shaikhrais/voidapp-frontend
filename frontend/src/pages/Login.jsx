@@ -132,7 +132,7 @@ const Login = () => {
                 <div style={{
                     width: '100%',
                     maxWidth: '100%',
-                    padding: '2rem',
+                    padding: '10%',
                 }}>
                     {/* Header */}
                     <div style={{ marginBottom: '2rem' }}>
