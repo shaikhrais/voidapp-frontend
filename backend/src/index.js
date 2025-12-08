@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { SignJWT, jwtVerify } from 'jose';
 import syncRoutes from './routes/sync.js';
+import voiceRoutes from './routes/voice.js';
 
 const app = new Hono();
 
@@ -236,8 +237,43 @@ app.get('/api/billing/usage', async (c) => {
 // Sync routes (Twilio integration)
 app.route('/api/sync', syncRoutes);
 
+// Voice routes (Twilio Voice SDK)
+app.route('/api/voice', voiceRoutes);
+
+// Numbers endpoint
+app.get('/api/numbers', async (c) => {
+    try {
+        const authHeader = c.req.header('Authorization');
+        if (!authHeader) {
+            return c.json({ error: 'Authentication required' }, 401);
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const payload = await verifyToken(token, c.env.JWT_SECRET);
+
+        const db = c.env.DB;
+        const user = await db.prepare(
+            'SELECT organization_id FROM users WHERE id = ?'
+        ).bind(payload.id).first();
+
+        if (!user) {
+            return c.json({ error: 'User not found' }, 401);
+        }
+
+        const numbers = await db.prepare(
+            'SELECT * FROM phone_numbers WHERE organization_id = ? ORDER BY created_at DESC'
+        ).bind(user.organization_id).all();
+
+        return c.json({
+            numbers: numbers.results || []
+        });
+    } catch (error) {
+        console.error('Numbers error:', error);
+        return c.json({ error: 'Invalid token' }, 401);
+    }
+});
+
 // Placeholder routes
-app.all('/api/numbers*', (c) => c.json({ message: 'Numbers - Coming soon' }, 501));
 app.all('/api/calls*', (c) => c.json({ message: 'Calls - Coming soon' }, 501));
 app.all('/api/sms*', (c) => c.json({ message: 'SMS - Coming soon' }, 501));
 app.all('/api/organizations*', (c) => c.json({ message: 'Organizations - Coming soon' }, 501));

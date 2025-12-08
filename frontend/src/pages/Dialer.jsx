@@ -1,11 +1,133 @@
-import React, { useState } from 'react';
-import { Phone, Delete, PhoneCall, User, Clock, Volume2 } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Phone, Delete, PhoneCall, User, Clock, Volume2, ChevronDown, Mic, MicOff } from 'lucide-react';
+import { Device } from '@twilio/voice-sdk';
+import api from '../services/api';
 
 const Dialer = () => {
     const [phoneNumber, setPhoneNumber] = useState('');
     const [calling, setCalling] = useState(false);
     const [inCall, setInCall] = useState(false);
     const [callDuration, setCallDuration] = useState(0);
+    const [myNumbers, setMyNumbers] = useState([]);
+    const [selectedNumber, setSelectedNumber] = useState(null);
+    const [showNumberSelect, setShowNumberSelect] = useState(false);
+    const [device, setDevice] = useState(null);
+    const [connection, setConnection] = useState(null);
+    const [muted, setMuted] = useState(false);
+    const [deviceReady, setDeviceReady] = useState(false);
+    const [error, setError] = useState('');
+    const timerRef = useRef(null);
+
+    useEffect(() => {
+        fetchMyNumbers();
+        initializeDevice();
+
+        return () => {
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+            }
+            if (device) {
+                device.destroy();
+            }
+        };
+    }, []);
+
+    const fetchMyNumbers = async () => {
+        try {
+            const response = await api.get('/numbers');
+            const numbers = response.data.numbers || [];
+            setMyNumbers(numbers);
+            if (numbers.length > 0) {
+                setSelectedNumber(numbers[0]);
+            }
+        } catch (error) {
+            console.error('Error fetching numbers:', error);
+        }
+    };
+
+    const initializeDevice = async () => {
+        try {
+            const response = await api.get('/voice/token');
+            const { token } = response.data;
+
+            const twilioDevice = new Device(token, {
+                codecPreferences: ['opus', 'pcmu'],
+                fakeLocalDTMF: true,
+                enableRingingState: true,
+            });
+
+            twilioDevice.on('registered', () => {
+                console.log('Twilio Device Ready');
+                setDeviceReady(true);
+                setError('');
+            });
+
+            twilioDevice.on('error', (error) => {
+                console.error('Twilio Device Error:', error);
+                setError('Device error: ' + error.message);
+            });
+
+            twilioDevice.on('incoming', (conn) => {
+                console.log('Incoming call');
+                setConnection(conn);
+                setupConnectionHandlers(conn);
+            });
+
+            await twilioDevice.register();
+            setDevice(twilioDevice);
+        } catch (error) {
+            console.error('Failed to initialize device:', error);
+            setError('Failed to initialize: ' + error.message);
+        }
+    };
+
+    const setupConnectionHandlers = (conn) => {
+        conn.on('accept', () => {
+            console.log('Call accepted');
+            setCalling(false);
+            setInCall(true);
+            startCallTimer();
+        });
+
+        conn.on('disconnect', () => {
+            console.log('Call ended');
+            handleCallEnd();
+        });
+
+        conn.on('cancel', () => {
+            console.log('Call cancelled');
+            handleCallEnd();
+        });
+
+        conn.on('reject', () => {
+            console.log('Call rejected');
+            handleCallEnd();
+        });
+
+        conn.on('error', (error) => {
+            console.error('Connection error:', error);
+            setError('Call error: ' + error.message);
+            handleCallEnd();
+        });
+    };
+
+    const startCallTimer = () => {
+        timerRef.current = setInterval(() => {
+            setCallDuration(prev => prev + 1);
+        }, 1000);
+    };
+
+    const handleCallEnd = () => {
+        setInCall(false);
+        setCalling(false);
+        setCallDuration(0);
+        setPhoneNumber('');
+        setConnection(null);
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+    };
 
     const dialpadButtons = [
         { digit: '1', letters: '' },
@@ -23,7 +145,9 @@ const Dialer = () => {
     ];
 
     const handleDigitClick = (digit) => {
-        if (!inCall) {
+        if (inCall && connection) {
+            connection.sendDigits(digit);
+        } else {
             setPhoneNumber(prev => prev + digit);
         }
     };
@@ -32,30 +156,41 @@ const Dialer = () => {
         setPhoneNumber(prev => prev.slice(0, -1));
     };
 
-    const handleCall = () => {
-        if (phoneNumber) {
+    const handleCall = async () => {
+        if (!phoneNumber || !selectedNumber || !device) {
+            setError('Missing phone number or device not ready');
+            return;
+        }
+
+        try {
             setCalling(true);
-            // Simulate call connection
-            setTimeout(() => {
-                setCalling(false);
-                setInCall(true);
-                // Start call timer
-                const timer = setInterval(() => {
-                    setCallDuration(prev => prev + 1);
-                }, 1000);
-                // Store timer to clear later
-                window.callTimer = timer;
-            }, 2000);
+            setError('');
+
+            const params = {
+                To: phoneNumber,
+            };
+
+            const conn = await device.connect({ params });
+            setConnection(conn);
+            setupConnectionHandlers(conn);
+        } catch (error) {
+            console.error('Call failed:', error);
+            setError('Call failed: ' + error.message);
+            setCalling(false);
         }
     };
 
     const handleEndCall = () => {
-        setInCall(false);
-        setCalling(false);
-        setCallDuration(0);
-        setPhoneNumber('');
-        if (window.callTimer) {
-            clearInterval(window.callTimer);
+        if (connection) {
+            connection.disconnect();
+        }
+        handleCallEnd();
+    };
+
+    const toggleMute = () => {
+        if (connection) {
+            connection.mute(!muted);
+            setMuted(!muted);
         }
     };
 
@@ -66,7 +201,6 @@ const Dialer = () => {
     };
 
     const formatPhoneNumber = (number) => {
-        // Format as (XXX) XXX-XXXX for display
         const cleaned = number.replace(/\D/g, '');
         if (cleaned.length <= 3) return cleaned;
         if (cleaned.length <= 6) return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3)}`;
@@ -78,26 +212,28 @@ const Dialer = () => {
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
-            minHeight: 'calc(100vh - 200px)',
+            padding: '1rem',
+            minHeight: '100%',
         }}>
             <div style={{
                 background: '#1e293b',
                 borderRadius: '24px',
-                padding: '2.5rem',
-                maxWidth: '450px',
+                padding: 'clamp(1.5rem, 4vw, 2.5rem)',
+                maxWidth: '500px',
                 width: '100%',
                 border: '1px solid #334155',
                 boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
             }}>
                 {/* Header */}
-                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
                     <div style={{
-                        width: '80px',
-                        height: '80px',
+                        width: 'clamp(60px, 15vw, 80px)',
+                        height: 'clamp(60px, 15vw, 80px)',
                         margin: '0 auto 1rem',
                         background: inCall ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
                             calling ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' :
-                                'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                deviceReady ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' :
+                                    'linear-gradient(135deg, #64748b 0%, #475569 100%)',
                         borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
@@ -105,15 +241,15 @@ const Dialer = () => {
                         boxShadow: '0 10px 30px rgba(102, 126, 234, 0.4)',
                         animation: calling ? 'pulse 1.5s ease-in-out infinite' : 'none',
                     }}>
-                        <Phone size={40} color="white" />
+                        <Phone size={window.innerWidth < 400 ? 30 : 40} color="white" />
                     </div>
                     <h2 style={{
-                        fontSize: '1.5rem',
+                        fontSize: 'clamp(1.25rem, 4vw, 1.5rem)',
                         fontWeight: '700',
                         color: '#f1f5f9',
                         marginBottom: '0.5rem',
                     }}>
-                        {inCall ? 'In Call' : calling ? 'Calling...' : 'Dialer'}
+                        {inCall ? 'In Call' : calling ? 'Calling...' : deviceReady ? 'Dialer' : 'Connecting...'}
                     </h2>
                     {inCall && (
                         <div style={{
@@ -128,25 +264,116 @@ const Dialer = () => {
                             <span>{formatDuration(callDuration)}</span>
                         </div>
                     )}
+                    {error && (
+                        <div style={{
+                            marginTop: '0.5rem',
+                            padding: '0.5rem',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid #ef4444',
+                            borderRadius: '6px',
+                            color: '#ef4444',
+                            fontSize: '0.75rem',
+                        }}>
+                            {error}
+                        </div>
+                    )}
                 </div>
+
+                {/* Number Selector */}
+                {myNumbers.length > 0 && !inCall && (
+                    <div style={{ marginBottom: '1rem', position: 'relative' }}>
+                        <label style={{
+                            display: 'block',
+                            fontSize: '0.75rem',
+                            fontWeight: '600',
+                            color: '#94a3b8',
+                            marginBottom: '0.5rem',
+                        }}>
+                            Calling From
+                        </label>
+                        <button
+                            onClick={() => setShowNumberSelect(!showNumberSelect)}
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem 1rem',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '8px',
+                                color: '#f1f5f9',
+                                fontSize: '0.875rem',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                transition: 'all 0.2s',
+                            }}
+                        >
+                            <span>{selectedNumber?.friendly_name || selectedNumber?.phone_number || 'Select Number'}</span>
+                            <ChevronDown size={18} style={{
+                                transform: showNumberSelect ? 'rotate(180deg)' : 'rotate(0deg)',
+                                transition: 'transform 0.2s',
+                            }} />
+                        </button>
+                        {showNumberSelect && (
+                            <div style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: 0,
+                                right: 0,
+                                marginTop: '0.5rem',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '8px',
+                                zIndex: 10,
+                                maxHeight: '200px',
+                                overflowY: 'auto',
+                            }}>
+                                {myNumbers.map((number) => (
+                                    <button
+                                        key={number.id}
+                                        onClick={() => {
+                                            setSelectedNumber(number);
+                                            setShowNumberSelect(false);
+                                        }}
+                                        style={{
+                                            width: '100%',
+                                            padding: '0.75rem 1rem',
+                                            background: selectedNumber?.id === number.id ? '#334155' : 'transparent',
+                                            border: 'none',
+                                            borderBottom: '1px solid #334155',
+                                            color: '#f1f5f9',
+                                            fontSize: '0.875rem',
+                                            cursor: 'pointer',
+                                            textAlign: 'left',
+                                        }}
+                                    >
+                                        <div style={{ fontWeight: '600' }}>{number.friendly_name}</div>
+                                        <div style={{ fontSize: '0.75rem', color: '#94a3b8' }}>{number.phone_number}</div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Phone Number Display */}
                 <div style={{
                     background: '#0f172a',
                     borderRadius: '12px',
-                    padding: '1.5rem',
-                    marginBottom: '2rem',
-                    minHeight: '80px',
+                    padding: 'clamp(1rem, 3vw, 1.5rem)',
+                    marginBottom: '1.5rem',
+                    minHeight: 'clamp(60px, 15vw, 80px)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     border: '1px solid #334155',
                 }}>
                     <div style={{
-                        fontSize: '2rem',
+                        fontSize: 'clamp(1.5rem, 5vw, 2rem)',
                         fontWeight: '600',
                         color: phoneNumber ? '#f1f5f9' : '#64748b',
                         letterSpacing: '0.05em',
+                        wordBreak: 'break-all',
                     }}>
                         {phoneNumber ? formatPhoneNumber(phoneNumber) : 'Enter number'}
                     </div>
@@ -156,28 +383,25 @@ const Dialer = () => {
                 <div style={{
                     display: 'grid',
                     gridTemplateColumns: 'repeat(3, 1fr)',
-                    gap: '1rem',
+                    gap: 'clamp(0.5rem, 2vw, 1rem)',
                     marginBottom: '1.5rem',
                 }}>
                     {dialpadButtons.map((button) => (
                         <button
                             key={button.digit}
                             onClick={() => handleDigitClick(button.digit)}
-                            disabled={inCall}
                             style={{
                                 background: '#334155',
                                 border: '1px solid #475569',
-                                borderRadius: '16px',
-                                padding: '1.25rem',
-                                cursor: inCall ? 'not-allowed' : 'pointer',
+                                borderRadius: '12px',
+                                padding: 'clamp(0.75rem, 3vw, 1.25rem)',
+                                cursor: 'pointer',
                                 transition: 'all 0.2s',
-                                opacity: inCall ? 0.5 : 1,
+                                aspectRatio: '1',
                             }}
                             onMouseEnter={(e) => {
-                                if (!inCall) {
-                                    e.currentTarget.style.background = '#475569';
-                                    e.currentTarget.style.transform = 'scale(1.05)';
-                                }
+                                e.currentTarget.style.background = '#475569';
+                                e.currentTarget.style.transform = 'scale(1.05)';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.background = '#334155';
@@ -185,16 +409,16 @@ const Dialer = () => {
                             }}
                         >
                             <div style={{
-                                fontSize: '1.75rem',
+                                fontSize: 'clamp(1.25rem, 4vw, 1.75rem)',
                                 fontWeight: '600',
                                 color: '#f1f5f9',
-                                marginBottom: '0.25rem',
+                                marginBottom: '0.125rem',
                             }}>
                                 {button.digit}
                             </div>
                             {button.letters && (
                                 <div style={{
-                                    fontSize: '0.75rem',
+                                    fontSize: 'clamp(0.625rem, 2vw, 0.75rem)',
                                     color: '#94a3b8',
                                     letterSpacing: '0.1em',
                                 }}>
@@ -210,6 +434,7 @@ const Dialer = () => {
                     display: 'flex',
                     gap: '1rem',
                     justifyContent: 'center',
+                    alignItems: 'center',
                 }}>
                     {!inCall && !calling && (
                         <>
@@ -217,8 +442,8 @@ const Dialer = () => {
                                 onClick={handleDelete}
                                 disabled={!phoneNumber}
                                 style={{
-                                    width: '60px',
-                                    height: '60px',
+                                    width: 'clamp(50px, 12vw, 60px)',
+                                    height: 'clamp(50px, 12vw, 60px)',
                                     background: '#334155',
                                     border: '1px solid #475569',
                                     borderRadius: '50%',
@@ -229,78 +454,75 @@ const Dialer = () => {
                                     opacity: phoneNumber ? 1 : 0.5,
                                     transition: 'all 0.2s',
                                 }}
-                                onMouseEnter={(e) => {
-                                    if (phoneNumber) {
-                                        e.currentTarget.style.background = '#475569';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = '#334155';
-                                }}
                             >
-                                <Delete size={24} color="#f1f5f9" />
+                                <Delete size={window.innerWidth < 400 ? 20 : 24} color="#f1f5f9" />
                             </button>
                             <button
                                 onClick={handleCall}
-                                disabled={!phoneNumber}
+                                disabled={!phoneNumber || !selectedNumber || !deviceReady}
                                 style={{
-                                    width: '80px',
-                                    height: '80px',
-                                    background: phoneNumber ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#334155',
+                                    width: 'clamp(70px, 18vw, 80px)',
+                                    height: 'clamp(70px, 18vw, 80px)',
+                                    background: (phoneNumber && selectedNumber && deviceReady) ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#334155',
                                     border: 'none',
                                     borderRadius: '50%',
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    cursor: phoneNumber ? 'pointer' : 'not-allowed',
+                                    cursor: (phoneNumber && selectedNumber && deviceReady) ? 'pointer' : 'not-allowed',
                                     transition: 'all 0.2s',
-                                    boxShadow: phoneNumber ? '0 8px 20px rgba(16, 185, 129, 0.4)' : 'none',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (phoneNumber) {
-                                        e.currentTarget.style.transform = 'scale(1.1)';
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.transform = 'scale(1)';
+                                    boxShadow: (phoneNumber && selectedNumber && deviceReady) ? '0 8px 20px rgba(16, 185, 129, 0.4)' : 'none',
                                 }}
                             >
-                                <PhoneCall size={32} color="white" />
+                                <PhoneCall size={window.innerWidth < 400 ? 28 : 32} color="white" />
                             </button>
                         </>
                     )}
                     {(inCall || calling) && (
-                        <button
-                            onClick={handleEndCall}
-                            style={{
-                                width: '80px',
-                                height: '80px',
-                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                                border: 'none',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s',
-                                boxShadow: '0 8px 20px rgba(239, 68, 68, 0.4)',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'scale(1.1)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'scale(1)';
-                            }}
-                        >
-                            <PhoneCall size={32} color="white" style={{ transform: 'rotate(135deg)' }} />
-                        </button>
+                        <>
+                            <button
+                                onClick={toggleMute}
+                                style={{
+                                    width: 'clamp(50px, 12vw, 60px)',
+                                    height: 'clamp(50px, 12vw, 60px)',
+                                    background: muted ? '#ef4444' : '#334155',
+                                    border: '1px solid #475569',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                }}
+                            >
+                                {muted ? <MicOff size={24} color="white" /> : <Mic size={24} color="#f1f5f9" />}
+                            </button>
+                            <button
+                                onClick={handleEndCall}
+                                style={{
+                                    width: 'clamp(70px, 18vw, 80px)',
+                                    height: 'clamp(70px, 18vw, 80px)',
+                                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                    border: 'none',
+                                    borderRadius: '50%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    boxShadow: '0 8px 20px rgba(239, 68, 68, 0.4)',
+                                }}
+                            >
+                                <PhoneCall size={window.innerWidth < 400 ? 28 : 32} color="white" style={{ transform: 'rotate(135deg)' }} />
+                            </button>
+                        </>
                     )}
                 </div>
 
                 {/* Call Info */}
                 {inCall && (
                     <div style={{
-                        marginTop: '2rem',
+                        marginTop: '1.5rem',
                         padding: '1rem',
                         background: '#0f172a',
                         borderRadius: '12px',
@@ -341,7 +563,7 @@ const Dialer = () => {
                 )}
             </div>
 
-            {/* Keyframes for pulse animation */}
+            {/* Keyframes */}
             <style>{`
                 @keyframes pulse {
                     0%, 100% { 
