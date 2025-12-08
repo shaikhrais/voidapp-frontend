@@ -41,6 +41,16 @@ const DashboardLayout = () => {
 
     const allNavItems = [...adminItems, ...agencyItems, ...businessItems, ...navItems];
 
+    // Debug logging
+    console.log('=== USER DEBUG ===');
+    console.log('Full user object:', user);
+    console.log('Role:', user?.role);
+    console.log('Organization ID:', user?.organization_id);
+    console.log('Admin items shown:', adminItems.length > 0);
+    console.log('Agency items shown:', agencyItems.length > 0);
+    console.log('Business items shown:', businessItems.length > 0);
+    console.log('==================');
+
     const styles = {
         container: {
             display: 'flex',

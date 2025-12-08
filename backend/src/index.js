@@ -184,12 +184,12 @@ app.get('/api/billing/balance', async (c) => {
             'SELECT organization_id FROM users WHERE id = ?'
         ).bind(payload.id).first();
 
-        if (!user) {
-            return c.json({ error: 'User not found' }, 401);
+        if (!user || !user.organization_id) {
+            return c.json({ error: 'User not found' }, 404);
         }
 
         const org = await db.prepare(
-            'SELECT credits FROM organizations WHERE id = ?'
+            'SELECT credits FROM organizations_v2 WHERE id = ?'
         ).bind(user.organization_id).first();
 
         return c.json({ balance: org?.credits || 0 });
