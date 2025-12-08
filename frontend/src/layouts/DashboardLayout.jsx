@@ -34,8 +34,8 @@ const DashboardLayout = () => {
         { path: '/dashboard/agency', label: 'Agency Dashboard', icon: Building2 },
     ] : [];
 
-    // Add team management for business and agency admins (not super admin)
-    const businessItems = (user?.role === 'business_admin' || user?.role === 'agency_admin') ? [
+    // Add team management for ALL admin roles
+    const businessItems = (user?.role === 'business_admin' || user?.role === 'agency_admin' || user?.role === 'super_admin') ? [
         { path: '/dashboard/team', label: 'Team Management', icon: Users },
     ] : [];
 

@@ -1,0 +1,16 @@
+{
+    "name": "voipapp-tests",
+    "version": "1.0.0",
+    "description": "Automated test suite for VOIP SaaS Platform",
+    "scripts": {
+        "test": "node tests/backend.test.js",
+        "test:watch": "nodemon tests/backend.test.js",
+        "test:report": "node tests/backend.test.js && open test-reports/*.html"
+    },
+    "dependencies": {
+        "axios": "^1.6.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.0"
+    }
+}
