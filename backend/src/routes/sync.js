@@ -1,7 +1,37 @@
 import { Hono } from 'hono';
 import { createTwilioClient } from '../twilio.js';
+import { jwtVerify } from 'jose';
 
 const sync = new Hono();
+
+// Auth middleware
+sync.use('*', async (c, next) => {
+    try {
+        const authHeader = c.req.header('Authorization');
+        if (!authHeader) {
+            return c.json({ error: 'Authentication required' }, 401);
+        }
+
+        const token = authHeader.replace('Bearer ', '');
+        const encoder = new TextEncoder();
+        const { payload } = await jwtVerify(token, encoder.encode(c.env.JWT_SECRET));
+
+        const db = c.env.DB;
+        const user = await db.prepare(
+            'SELECT id, email, organization_id FROM users WHERE id = ?'
+        ).bind(payload.id).first();
+
+        if (!user) {
+            return c.json({ error: 'User not found' }, 401);
+        }
+
+        c.set('user', user);
+        await next();
+    } catch (error) {
+        console.error('Auth error:', error);
+        return c.json({ error: 'Invalid token' }, 401);
+    }
+});
 
 // Sync calls from Twilio
 sync.post('/calls', async (c) => {

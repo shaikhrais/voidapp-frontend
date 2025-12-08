@@ -1,172 +1,291 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { RefreshCw, Phone, MessageSquare, PhoneCall, CheckCircle, AlertCircle } from 'lucide-react';
 import api from '../services/api';
-import { Users, Key, CreditCard, Plus, Trash2, Copy } from 'lucide-react';
 
 const Settings = () => {
-    const [activeTab, setActiveTab] = useState('team');
-    const [keys, setKeys] = useState([]);
-    const [team, setTeam] = useState([]); // Mock team for now
-    const [inviteEmail, setInviteEmail] = useState('');
-    const [loading, setLoading] = useState(false);
+    const [syncing, setSyncing] = useState(false);
+    const [syncResult, setSyncResult] = useState(null);
+    const [error, setError] = useState('');
 
-    useEffect(() => {
-        if (activeTab === 'keys') fetchKeys();
-    }, [activeTab]);
+    const handleSync = async (type) => {
+        setSyncing(true);
+        setError('');
+        setSyncResult(null);
 
-    const fetchKeys = async () => {
         try {
-            const response = await api.get('/keys');
-            setKeys(response.data);
-        } catch (error) {
-            console.error('Error fetching keys', error);
-        }
-    };
-
-    const createKey = async () => {
-        try {
-            await api.post('/keys', { name: `Key ${keys.length + 1}` });
-            fetchKeys();
-        } catch (error) {
-            alert('Failed to create key');
-        }
-    };
-
-    const deleteKey = async (id) => {
-        if (!window.confirm('Revoke this key?')) return;
-        try {
-            await api.delete(`/keys/${id}`);
-            fetchKeys();
-        } catch (error) {
-            alert('Failed to delete key');
-        }
-    };
-
-    const handleInvite = async (e) => {
-        e.preventDefault();
-        try {
-            await api.post('/organizations/invite', { email: inviteEmail });
-            alert('Invitation sent!');
-            setInviteEmail('');
-        } catch (error) {
-            alert('Failed to send invitation');
-        }
-    };
-
-    const handleCheckout = async () => {
-        try {
-            const response = await api.post('/billing/checkout', { amount: 10 });
-            if (response.data.url) {
-                window.location.href = response.data.url;
-            }
-        } catch (error) {
-            alert('Failed to start checkout');
+            const endpoint = type === 'all' ? '/sync/all' : `/sync/${type}`;
+            const response = await api.post(endpoint);
+            setSyncResult(response.data);
+        } catch (err) {
+            setError(err.response?.data?.error || 'Sync failed');
+        } finally {
+            setSyncing(false);
         }
     };
 
     return (
         <div>
-            <h2 style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#111827', marginBottom: '2rem' }}>Settings</h2>
+            <h2 style={{
+                fontSize: '1.875rem',
+                fontWeight: '700',
+                color: '#f1f5f9',
+                marginBottom: '2rem',
+            }}>
+                Settings
+            </h2>
 
-            <div style={{ display: 'flex', borderBottom: '1px solid #e5e7eb', marginBottom: '2rem' }}>
-                {['team', 'keys', 'billing'].map((tab) => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        style={{
-                            padding: '0.75rem 1.5rem',
-                            border: 'none',
-                            backgroundColor: 'transparent',
-                            borderBottom: activeTab === tab ? '2px solid #2563eb' : 'none',
-                            color: activeTab === tab ? '#2563eb' : '#6b7280',
-                            fontWeight: '500',
-                            cursor: 'pointer',
-                            textTransform: 'capitalize'
-                        }}
-                    >
-                        {tab}
-                    </button>
-                ))}
-            </div>
+            {/* Twilio Sync Section */}
+            <div style={{
+                background: '#1e293b',
+                borderRadius: '12px',
+                border: '1px solid #334155',
+                padding: '2rem',
+                marginBottom: '2rem',
+            }}>
+                <h3 style={{
+                    fontSize: '1.25rem',
+                    fontWeight: '700',
+                    color: '#f1f5f9',
+                    marginBottom: '0.5rem',
+                }}>
+                    Twilio Sync
+                </h3>
+                <p style={{
+                    color: '#94a3b8',
+                    fontSize: '0.875rem',
+                    marginBottom: '2rem',
+                }}>
+                    Sync your calls, messages, and phone numbers from Twilio
+                </p>
 
-            {activeTab === 'team' && (
-                <div>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <Users size={20} /> Team Management
-                    </h3>
-                    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', marginBottom: '2rem' }}>
-                        <form onSubmit={handleInvite} style={{ display: 'flex', gap: '1rem' }}>
-                            <input
-                                type="email"
-                                placeholder="colleague@example.com"
-                                value={inviteEmail}
-                                onChange={(e) => setInviteEmail(e.target.value)}
-                                required
-                                style={{ flex: 1, padding: '0.75rem', borderRadius: '6px', border: '1px solid #d1d5db' }}
-                            />
-                            <button type="submit" style={{ backgroundColor: '#2563eb', color: 'white', padding: '0.75rem 1.5rem', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-                                Invite
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {activeTab === 'keys' && (
-                <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                        <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Key size={20} /> API Keys
-                        </h3>
-                        <button onClick={createKey} style={{ backgroundColor: '#2563eb', color: 'white', padding: '0.5rem 1rem', border: 'none', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <Plus size={16} /> Generate Key
-                        </button>
-                    </div>
-                    <div style={{ backgroundColor: 'white', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-                        {keys.length === 0 ? (
-                            <p style={{ padding: '1.5rem', color: '#6b7280', textAlign: 'center' }}>No active API keys.</p>
+                {/* Sync Results */}
+                {syncResult && (
+                    <div style={{
+                        padding: '1rem',
+                        background: '#0f172a',
+                        borderRadius: '8px',
+                        marginBottom: '1.5rem',
+                        border: '1px solid #10b981',
+                    }}>
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            marginBottom: '1rem',
+                            color: '#10b981',
+                        }}>
+                            <CheckCircle size={20} />
+                            <span style={{ fontWeight: '600' }}>Sync Completed!</span>
+                        </div>
+                        {syncResult.results ? (
+                            <div style={{ color: '#cbd5e1', fontSize: '0.875rem' }}>
+                                <p>📞 Calls: {syncResult.results.calls.synced} synced, {syncResult.results.calls.errors} errors</p>
+                                <p>💬 Messages: {syncResult.results.messages.synced} synced, {syncResult.results.messages.errors} errors</p>
+                                <p>📱 Numbers: {syncResult.results.numbers.synced} synced, {syncResult.results.numbers.errors} errors</p>
+                            </div>
                         ) : (
-                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                                <thead>
-                                    <tr style={{ backgroundColor: '#f9fafb', borderBottom: '1px solid #e5e7eb', textAlign: 'left' }}>
-                                        <th style={{ padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>Name</th>
-                                        <th style={{ padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>Key Prefix</th>
-                                        <th style={{ padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>Created</th>
-                                        <th style={{ padding: '1rem', color: '#6b7280', fontSize: '0.875rem' }}>Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {keys.map((key) => (
-                                        <tr key={key.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                            <td style={{ padding: '1rem' }}>{key.name}</td>
-                                            <td style={{ padding: '1rem', fontFamily: 'monospace' }}>{key.key.substring(0, 8)}...</td>
-                                            <td style={{ padding: '1rem', color: '#6b7280' }}>{new Date(key.createdAt).toLocaleDateString()}</td>
-                                            <td style={{ padding: '1rem' }}>
-                                                <button onClick={() => deleteKey(key.id)} style={{ border: 'none', background: 'none', color: '#ef4444', cursor: 'pointer' }}>
-                                                    <Trash2 size={18} />
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            <p style={{ color: '#cbd5e1', fontSize: '0.875rem' }}>
+                                Synced: {syncResult.synced}, Errors: {syncResult.errors}
+                            </p>
                         )}
                     </div>
-                </div>
-            )}
+                )}
 
-            {activeTab === 'billing' && (
-                <div>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <CreditCard size={20} /> Billing
-                    </h3>
-                    <div style={{ backgroundColor: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
-                        <p style={{ marginBottom: '1rem', color: '#4b5563' }}>Add credits to your account to make calls and send SMS.</p>
-                        <button onClick={handleCheckout} style={{ backgroundColor: '#10b981', color: 'white', padding: '0.75rem 1.5rem', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1rem', fontWeight: '500' }}>
-                            Add $10 Credits
-                        </button>
+                {/* Error Message */}
+                {error && (
+                    <div style={{
+                        padding: '1rem',
+                        background: 'rgba(239, 68, 68, 0.1)',
+                        border: '1px solid #ef4444',
+                        borderRadius: '8px',
+                        marginBottom: '1.5rem',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        color: '#ef4444',
+                        fontSize: '0.875rem',
+                    }}>
+                        <AlertCircle size={18} />
+                        {error}
                     </div>
+                )}
+
+                {/* Sync Buttons */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: '1rem',
+                }}>
+                    <button
+                        onClick={() => handleSync('all')}
+                        disabled={syncing}
+                        style={{
+                            padding: '1rem',
+                            background: syncing ? '#334155' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            cursor: syncing ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!syncing) e.currentTarget.style.transform = 'translateY(-2px)';
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                    >
+                        <RefreshCw size={18} style={{ animation: syncing ? 'spin 1s linear infinite' : 'none' }} />
+                        {syncing ? 'Syncing...' : 'Sync All'}
+                    </button>
+
+                    <button
+                        onClick={() => handleSync('calls')}
+                        disabled={syncing}
+                        style={{
+                            padding: '1rem',
+                            background: '#334155',
+                            color: '#f1f5f9',
+                            border: '1px solid #475569',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            cursor: syncing ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!syncing) {
+                                e.currentTarget.style.background = '#475569';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#334155';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                    >
+                        <PhoneCall size={18} />
+                        Sync Calls
+                    </button>
+
+                    <button
+                        onClick={() => handleSync('messages')}
+                        disabled={syncing}
+                        style={{
+                            padding: '1rem',
+                            background: '#334155',
+                            color: '#f1f5f9',
+                            border: '1px solid #475569',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            cursor: syncing ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!syncing) {
+                                e.currentTarget.style.background = '#475569';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#334155';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                    >
+                        <MessageSquare size={18} />
+                        Sync Messages
+                    </button>
+
+                    <button
+                        onClick={() => handleSync('numbers')}
+                        disabled={syncing}
+                        style={{
+                            padding: '1rem',
+                            background: '#334155',
+                            color: '#f1f5f9',
+                            border: '1px solid #475569',
+                            borderRadius: '8px',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            cursor: syncing ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!syncing) {
+                                e.currentTarget.style.background = '#475569';
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#334155';
+                            e.currentTarget.style.transform = 'translateY(0)';
+                        }}
+                    >
+                        <Phone size={18} />
+                        Sync Numbers
+                    </button>
                 </div>
-            )}
+            </div>
+
+            {/* Account Section */}
+            <div style={{
+                background: '#1e293b',
+                borderRadius: '12px',
+                border: '1px solid #334155',
+                padding: '2rem',
+            }}>
+                <h3 style={{
+                    fontSize: '1.25rem',
+                    fontWeight: '700',
+                    color: '#f1f5f9',
+                    marginBottom: '0.5rem',
+                }}>
+                    Account
+                </h3>
+                <p style={{
+                    color: '#94a3b8',
+                    fontSize: '0.875rem',
+                    marginBottom: '1.5rem',
+                }}>
+                    Manage your account settings
+                </p>
+                <div style={{
+                    padding: '1rem',
+                    background: '#0f172a',
+                    borderRadius: '8px',
+                    color: '#cbd5e1',
+                    fontSize: '0.875rem',
+                }}>
+                    <p>More settings coming soon...</p>
+                </div>
+            </div>
+
+            {/* Keyframes for spinner */}
+            <style>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+            `}</style>
         </div>
     );
 };
