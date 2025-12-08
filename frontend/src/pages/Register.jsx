@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, ArrowRight, Sparkles } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
 
 const Register = () => {
     const [email, setEmail] = useState('');
@@ -21,197 +21,228 @@ const Register = () => {
             return;
         }
 
+        if (password.length < 8) {
+            setError('Password must be at least 8 characters');
+            return;
+        }
+
         setLoading(true);
 
         try {
             await register(email, password);
             navigate('/dashboard');
         } catch (err) {
-            setError(err.response?.data?.error || 'Registration failed');
+            setError(err.response?.data?.error || 'Registration failed. Please try again.');
         } finally {
             setLoading(false);
         }
     };
 
-    const styles = {
-        container: {
+    return (
+        <div style={{
             minHeight: '100vh',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'var(--bg-primary)',
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
             padding: '2rem',
-        },
-        card: {
-            background: 'var(--bg-secondary)',
-            borderRadius: 'var(--radius-xl)',
-            padding: '3rem',
-            maxWidth: '450px',
-            width: '100%',
-            border: '1px solid var(--border)',
-            boxShadow: 'var(--shadow-xl)',
-        },
-        header: {
-            textAlign: 'center',
-            marginBottom: '2rem',
-        },
-        icon: {
-            width: '60px',
-            height: '60px',
-            margin: '0 auto 1rem',
-            background: 'var(--gradient-accent)',
-            borderRadius: 'var(--radius-xl)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 0 20px rgba(236, 72, 153, 0.3)',
-        },
-        title: {
-            fontSize: '2rem',
-            fontWeight: '700',
-            marginBottom: '0.5rem',
-            background: 'var(--gradient-accent)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-        },
-        subtitle: {
-            color: 'var(--text-muted)',
-            fontSize: '0.875rem',
-        },
-        form: {
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.5rem',
-        },
-        inputGroup: {
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '0.5rem',
-        },
-        label: {
-            fontSize: '0.875rem',
-            fontWeight: '600',
-            color: 'var(--text-secondary)',
-        },
-        inputWrapper: {
-            position: 'relative',
-        },
-        inputIcon: {
-            position: 'absolute',
-            left: '1rem',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: 'var(--text-muted)',
-        },
-        input: {
-            width: '100%',
-            padding: '0.875rem 1rem 0.875rem 3rem',
-            background: 'var(--bg-tertiary)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--text-primary)',
-            fontSize: '0.875rem',
-            transition: 'all var(--transition-base)',
-        },
-        button: {
-            padding: '1rem',
-            background: 'var(--gradient-accent)',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--radius-lg)',
-            fontSize: '1rem',
-            fontWeight: '600',
-            cursor: 'pointer',
-            transition: 'all var(--transition-base)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '0.5rem',
-            boxShadow: 'var(--shadow-md)',
-        },
-        error: {
-            padding: '0.875rem',
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid var(--error)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--error)',
-            fontSize: '0.875rem',
-        },
-        footer: {
-            marginTop: '2rem',
-            textAlign: 'center',
-            fontSize: '0.875rem',
-            color: 'var(--text-muted)',
-        },
-        link: {
-            color: 'var(--accent)',
-            textDecoration: 'none',
-            fontWeight: '600',
-        },
-    };
-
-    return (
-        <div style={styles.container} className="animate-fade-in">
-            <div style={styles.card}>
-                <div style={styles.header}>
-                    <div style={styles.icon}>
-                        <Sparkles size={30} color="white" />
+        }}>
+            <div style={{
+                background: '#1e293b',
+                borderRadius: '16px',
+                padding: '3rem',
+                maxWidth: '450px',
+                width: '100%',
+                border: '1px solid #334155',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            }}>
+                {/* Header */}
+                <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+                    <div style={{
+                        width: '70px',
+                        height: '70px',
+                        margin: '0 auto 1.5rem',
+                        background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                        borderRadius: '16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 10px 30px rgba(236, 72, 153, 0.4)',
+                    }}>
+                        <Sparkles size={35} color="white" />
                     </div>
-                    <h1 style={styles.title}>Get Started</h1>
-                    <p style={styles.subtitle}>Create your VOIP SaaS account</p>
+                    <h1 style={{
+                        fontSize: '2rem',
+                        fontWeight: '700',
+                        marginBottom: '0.5rem',
+                        background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text',
+                    }}>
+                        Get Started
+                    </h1>
+                    <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                        Create your VOIP SaaS account
+                    </p>
                 </div>
 
-                <form onSubmit={handleSubmit} style={styles.form}>
-                    {error && <div style={styles.error}>{error}</div>}
+                {/* Form */}
+                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {error && (
+                        <div style={{
+                            padding: '1rem',
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            border: '1px solid #ef4444',
+                            borderRadius: '8px',
+                            color: '#ef4444',
+                            fontSize: '0.875rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem'
+                        }}>
+                            <AlertCircle size={18} />
+                            {error}
+                        </div>
+                    )}
 
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Email Address</label>
-                        <div style={styles.inputWrapper}>
-                            <Mail size={18} style={styles.inputIcon} />
+                    <div>
+                        <label style={{
+                            display: 'block',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: '#cbd5e1',
+                            marginBottom: '0.5rem'
+                        }}>
+                            Email Address
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                            <Mail size={18} style={{
+                                position: 'absolute',
+                                left: '1rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                color: '#64748b',
+                            }} />
                             <input
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="you@example.com"
                                 required
-                                style={styles.input}
-                                onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-                                onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.875rem 1rem 0.875rem 3rem',
+                                    background: '#334155',
+                                    border: '1px solid #475569',
+                                    borderRadius: '8px',
+                                    color: '#f1f5f9',
+                                    fontSize: '0.875rem',
+                                    transition: 'all 0.2s',
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.borderColor = '#ec4899';
+                                    e.target.style.boxShadow = '0 0 0 3px rgba(236, 72, 153, 0.1)';
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.borderColor = '#475569';
+                                    e.target.style.boxShadow = 'none';
+                                }}
                             />
                         </div>
                     </div>
 
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Password</label>
-                        <div style={styles.inputWrapper}>
-                            <Lock size={18} style={styles.inputIcon} />
+                    <div>
+                        <label style={{
+                            display: 'block',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: '#cbd5e1',
+                            marginBottom: '0.5rem'
+                        }}>
+                            Password
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                            <Lock size={18} style={{
+                                position: 'absolute',
+                                left: '1rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                color: '#64748b',
+                            }} />
                             <input
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
                                 required
-                                style={styles.input}
-                                onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-                                onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.875rem 1rem 0.875rem 3rem',
+                                    background: '#334155',
+                                    border: '1px solid #475569',
+                                    borderRadius: '8px',
+                                    color: '#f1f5f9',
+                                    fontSize: '0.875rem',
+                                    transition: 'all 0.2s',
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.borderColor = '#ec4899';
+                                    e.target.style.boxShadow = '0 0 0 3px rgba(236, 72, 153, 0.1)';
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.borderColor = '#475569';
+                                    e.target.style.boxShadow = 'none';
+                                }}
                             />
                         </div>
+                        <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem' }}>
+                            Must be at least 8 characters
+                        </p>
                     </div>
 
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Confirm Password</label>
-                        <div style={styles.inputWrapper}>
-                            <Lock size={18} style={styles.inputIcon} />
+                    <div>
+                        <label style={{
+                            display: 'block',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            color: '#cbd5e1',
+                            marginBottom: '0.5rem'
+                        }}>
+                            Confirm Password
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                            <CheckCircle size={18} style={{
+                                position: 'absolute',
+                                left: '1rem',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                color: '#64748b',
+                            }} />
                             <input
                                 type="password"
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
                                 placeholder="••••••••"
                                 required
-                                style={styles.input}
-                                onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
-                                onBlur={(e) => e.target.style.borderColor = 'var(--border)'}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.875rem 1rem 0.875rem 3rem',
+                                    background: '#334155',
+                                    border: '1px solid #475569',
+                                    borderRadius: '8px',
+                                    color: '#f1f5f9',
+                                    fontSize: '0.875rem',
+                                    transition: 'all 0.2s',
+                                }}
+                                onFocus={(e) => {
+                                    e.target.style.borderColor = '#ec4899';
+                                    e.target.style.boxShadow = '0 0 0 3px rgba(236, 72, 153, 0.1)';
+                                }}
+                                onBlur={(e) => {
+                                    e.target.style.borderColor = '#475569';
+                                    e.target.style.boxShadow = 'none';
+                                }}
                             />
                         </div>
                     </div>
@@ -219,14 +250,31 @@ const Register = () => {
                     <button
                         type="submit"
                         disabled={loading}
-                        style={styles.button}
+                        style={{
+                            padding: '1rem',
+                            background: loading ? '#64748b' : 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '8px',
+                            fontSize: '1rem',
+                            fontWeight: '600',
+                            cursor: loading ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            boxShadow: '0 4px 12px rgba(236, 72, 153, 0.3)',
+                        }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = 'var(--shadow-lg), 0 0 20px rgba(236, 72, 153, 0.3)';
+                            if (!loading) {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 8px 20px rgba(236, 72, 153, 0.4)';
+                            }
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(236, 72, 153, 0.3)';
                         }}
                     >
                         {loading ? 'Creating account...' : 'Create Account'}
@@ -234,9 +282,21 @@ const Register = () => {
                     </button>
                 </form>
 
-                <div style={styles.footer}>
+                {/* Footer */}
+                <div style={{
+                    marginTop: '2rem',
+                    textAlign: 'center',
+                    fontSize: '0.875rem',
+                    color: '#94a3b8',
+                }}>
                     Already have an account?{' '}
-                    <Link to="/login" style={styles.link}>Sign in</Link>
+                    <Link to="/login" style={{
+                        color: '#ec4899',
+                        textDecoration: 'none',
+                        fontWeight: '600'
+                    }}>
+                        Sign in
+                    </Link>
                 </div>
             </div>
         </div>

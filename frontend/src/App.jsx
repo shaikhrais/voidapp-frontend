@@ -5,18 +5,22 @@ import AuthLayout from './layouts/AuthLayout';
 import DashboardLayout from './layouts/DashboardLayout';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import MyNumbers from './pages/MyNumbers';
 import BuyNumber from './pages/BuyNumber';
 import CallLogs from './pages/CallLogs';
 import SMSLogs from './pages/SMSLogs';
 import Settings from './pages/Settings';
+import LoadingSplash from './components/LoadingSplash';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div>Loading...</div>;
-  if (!user) return <Navigate to="/login" />;
+
+  if (loading) return <LoadingSplash />;
+
+  if (!user) return <Navigate to="/login" replace />;
   return children;
 };
 
@@ -29,6 +33,7 @@ function App() {
           <Route element={<AuthLayout />}>
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
           </Route>
 
           <Route path="/dashboard" element={
