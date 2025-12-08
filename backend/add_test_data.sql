@@ -1,24 +1,19 @@
+-- Add organization first
+INSERT OR IGNORE INTO organizations (id, name, credits, created_at, updated_at) 
+VALUES ('org-001', 'Mohammed IT Pro', 10.00, unixepoch(), unixepoch());
+
 -- Add test user
-INSERT INTO users (id, email, password, created_at) 
-VALUES ('user-001', 'itpro.mohammed@gmail.com', '$2a$10$dummyhashfordevpurposes', datetime('now')) 
-ON CONFLICT(email) DO NOTHING;
+INSERT OR IGNORE INTO users (id, email, password, role, organization_id, created_at, updated_at) 
+VALUES ('user-001', 'itpro.mohammed@gmail.com', '$2a$10$dummyhashfordevpurposes', 'user', 'org-001', unixepoch(), unixepoch());
 
 -- Add phone number
-INSERT INTO phone_numbers (id, user_id, phone_number, friendly_name, sid, capabilities, type, locality, created_at) 
+INSERT OR IGNORE INTO phone_numbers (id, sid, phone_number, friendly_name, organization_id, created_at, updated_at) 
 VALUES (
     'num-001', 
-    'user-001', 
+    'PN14d5f063ed5b5412c444922d3a4b4fd1',
     '+16479302223', 
-    '(647) 930-2223', 
-    'PN14d5f063ed5b5412c444922d3a4b4fd1', 
-    'Voice, SMS, MMS, Fax, SIP', 
-    'Local', 
-    'Toronto, ON, CA', 
-    datetime('now')
-) 
-ON CONFLICT(phone_number) DO NOTHING;
-
--- Add billing record with $10 balance
-INSERT INTO billing (id, user_id, balance, created_at, updated_at) 
-VALUES ('bill-001', 'user-001', 10.00, datetime('now'), datetime('now')) 
-ON CONFLICT(user_id) DO UPDATE SET balance = 10.00;
+    '(647) 930-2223',
+    'org-001',
+    unixepoch(),
+    unixepoch()
+);

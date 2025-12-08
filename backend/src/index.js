@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { SignJWT, jwtVerify } from 'jose';
+import syncRoutes from './routes/sync.js';
 
 const app = new Hono();
 
@@ -231,6 +232,9 @@ app.get('/api/billing/usage', async (c) => {
         return c.json({ error: 'Invalid token' }, 401);
     }
 });
+
+// Sync routes (Twilio integration)
+app.route('/api/sync', syncRoutes);
 
 // Placeholder routes
 app.all('/api/numbers*', (c) => c.json({ message: 'Numbers - Coming soon' }, 501));
