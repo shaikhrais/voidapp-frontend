@@ -5,5 +5,5 @@ compatibility_flags = ["nodejs_compat"]
 
 [[d1_databases]]
 binding = "DB"
-database_name = "voipapp-v2"
-database_id = "8cf20f42-ce1a-401b-98a5-67163d825698"
+database_name = "voipapp-final"
+database_id = "1e2e8f67-08bc-457d-8525-1e6f513402ec"

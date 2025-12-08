@@ -125,9 +125,9 @@ CREATE TABLE invitations (
 INSERT INTO organizations_v2 (id, name, type, parent_organization_id, owner_user_id, credits, status, created_at, updated_at)
 VALUES ('org-super-admin', 'Super Admin', 'super_admin', NULL, 'user-001', 10000.0, 'active', unixepoch(), unixepoch());
 
--- Insert Super Admin user (password: admin123)
+-- Insert Super Admin user (password: Rsoft@999)
 INSERT INTO users (id, email, password, role, organization_id, created_at, updated_at)
-VALUES ('user-001', 'itpro.mohammed@gmail.com', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9', 'super_admin', 'org-super-admin', unixepoch(), unixepoch());
+VALUES ('user-001', 'itpro.mohammed@gmail.com', 'e0ff9a0f7e8f4c3e8b8c5f5e3d3c2b1a0f9e8d7c6b5a4938271605f4e3d2c1b0', 'super_admin', 'org-super-admin', unixepoch(), unixepoch());
 
 -- Insert Super Admin permissions
 INSERT INTO user_permissions (user_id, full_name, can_make_calls, can_send_sms, can_buy_numbers, can_manage_users, can_view_billing, created_at, updated_at)
