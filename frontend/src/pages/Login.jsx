@@ -28,18 +28,19 @@ const Login = () => {
 
     return (
         <div style={{
-            minHeight: '100vh',
+            height: '100vh',
             display: 'flex',
             background: '#0f172a',
+            overflow: 'hidden',
         }}>
             {/* Left Side - Branding */}
             <div style={{
                 flex: 1,
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                padding: '4rem',
+                padding: '2rem',
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'space-between',
+                justifyContent: 'center',
                 position: 'relative',
                 overflow: 'hidden',
             }}>
@@ -48,53 +49,43 @@ const Login = () => {
                     position: 'absolute',
                     top: '-10%',
                     right: '-10%',
-                    width: '400px',
-                    height: '400px',
+                    width: '300px',
+                    height: '300px',
                     background: 'rgba(255, 255, 255, 0.1)',
                     borderRadius: '50%',
                     filter: 'blur(60px)',
                 }} />
-                <div style={{
-                    position: 'absolute',
-                    bottom: '-20%',
-                    left: '-10%',
-                    width: '500px',
-                    height: '500px',
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    borderRadius: '50%',
-                    filter: 'blur(80px)',
-                }} />
 
                 {/* Logo */}
-                <div style={{ position: 'relative', zIndex: 1 }}>
+                <div style={{ position: 'relative', zIndex: 1, marginBottom: '2rem' }}>
                     <div style={{
-                        width: '60px',
-                        height: '60px',
+                        width: '50px',
+                        height: '50px',
                         background: 'rgba(255, 255, 255, 0.2)',
                         borderRadius: '12px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginBottom: '1rem',
+                        marginBottom: '0.75rem',
                         backdropFilter: 'blur(10px)',
                     }}>
-                        <Phone size={30} color="white" />
+                        <Phone size={24} color="white" />
                     </div>
                     <h1 style={{
-                        fontSize: '2.5rem',
+                        fontSize: '2rem',
                         fontWeight: '800',
                         color: 'white',
-                        marginBottom: '1rem',
+                        marginBottom: '0.5rem',
                     }}>
                         VOIP SaaS
                     </h1>
                     <p style={{
-                        fontSize: '1.125rem',
+                        fontSize: '1rem',
                         color: 'rgba(255, 255, 255, 0.9)',
-                        lineHeight: '1.6',
-                        maxWidth: '400px',
+                        lineHeight: '1.5',
+                        maxWidth: '350px',
                     }}>
-                        Enterprise-grade voice and messaging platform for modern businesses
+                        Enterprise-grade voice and messaging platform
                     </p>
                 </div>
 
@@ -108,13 +99,13 @@ const Login = () => {
                         <div key={index} style={{
                             display: 'flex',
                             alignItems: 'center',
-                            gap: '1rem',
-                            marginBottom: '1rem',
+                            gap: '0.75rem',
+                            marginBottom: '0.75rem',
                             color: 'white',
                         }}>
                             <div style={{
-                                width: '40px',
-                                height: '40px',
+                                width: '36px',
+                                height: '36px',
                                 background: 'rgba(255, 255, 255, 0.2)',
                                 borderRadius: '8px',
                                 display: 'flex',
@@ -122,9 +113,9 @@ const Login = () => {
                                 justifyContent: 'center',
                                 backdropFilter: 'blur(10px)',
                             }}>
-                                <feature.icon size={20} />
+                                <feature.icon size={18} />
                             </div>
-                            <span style={{ fontSize: '0.9375rem' }}>{feature.text}</span>
+                            <span style={{ fontSize: '0.875rem' }}>{feature.text}</span>
                         </div>
                     ))}
                 </div>
@@ -141,38 +132,38 @@ const Login = () => {
             }}>
                 <div style={{
                     width: '100%',
-                    maxWidth: '450px',
+                    maxWidth: '400px',
                 }}>
                     {/* Header */}
-                    <div style={{ marginBottom: '3rem' }}>
+                    <div style={{ marginBottom: '2rem' }}>
                         <h2 style={{
-                            fontSize: '2rem',
+                            fontSize: '1.75rem',
                             fontWeight: '700',
                             color: '#f1f5f9',
                             marginBottom: '0.5rem',
                         }}>
                             Welcome back
                         </h2>
-                        <p style={{ color: '#94a3b8', fontSize: '0.9375rem' }}>
+                        <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
                             Enter your credentials to access your account
                         </p>
                     </div>
 
                     {/* Form */}
-                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                         {error && (
                             <div style={{
-                                padding: '1rem',
+                                padding: '0.75rem',
                                 background: 'rgba(239, 68, 68, 0.1)',
                                 border: '1px solid rgba(239, 68, 68, 0.3)',
-                                borderRadius: '12px',
+                                borderRadius: '8px',
                                 color: '#ef4444',
                                 fontSize: '0.875rem',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.75rem'
+                                gap: '0.5rem'
                             }}>
-                                <AlertCircle size={20} />
+                                <AlertCircle size={18} />
                                 <span>{error}</span>
                             </div>
                         )}
@@ -183,14 +174,14 @@ const Login = () => {
                                 fontSize: '0.875rem',
                                 fontWeight: '600',
                                 color: '#cbd5e1',
-                                marginBottom: '0.75rem'
+                                marginBottom: '0.5rem'
                             }}>
                                 Email
                             </label>
                             <div style={{ position: 'relative' }}>
-                                <Mail size={20} style={{
+                                <Mail size={18} style={{
                                     position: 'absolute',
-                                    left: '1.125rem',
+                                    left: '1rem',
                                     top: '50%',
                                     transform: 'translateY(-50%)',
                                     color: '#64748b',
@@ -203,12 +194,12 @@ const Login = () => {
                                     required
                                     style={{
                                         width: '100%',
-                                        padding: '1rem 1rem 1rem 3.25rem',
+                                        padding: '0.75rem 0.75rem 0.75rem 2.75rem',
                                         background: '#1e293b',
                                         border: '1px solid #334155',
-                                        borderRadius: '12px',
+                                        borderRadius: '8px',
                                         color: '#f1f5f9',
-                                        fontSize: '0.9375rem',
+                                        fontSize: '0.875rem',
                                         transition: 'all 0.2s',
                                     }}
                                     onFocus={(e) => {
@@ -224,7 +215,7 @@ const Login = () => {
                         </div>
 
                         <div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                                 <label style={{
                                     fontSize: '0.875rem',
                                     fontWeight: '600',
@@ -246,9 +237,9 @@ const Login = () => {
                                 </Link>
                             </div>
                             <div style={{ position: 'relative' }}>
-                                <Lock size={20} style={{
+                                <Lock size={18} style={{
                                     position: 'absolute',
-                                    left: '1.125rem',
+                                    left: '1rem',
                                     top: '50%',
                                     transform: 'translateY(-50%)',
                                     color: '#64748b',
@@ -261,12 +252,12 @@ const Login = () => {
                                     required
                                     style={{
                                         width: '100%',
-                                        padding: '1rem 1rem 1rem 3.25rem',
+                                        padding: '0.75rem 0.75rem 0.75rem 2.75rem',
                                         background: '#1e293b',
                                         border: '1px solid #334155',
-                                        borderRadius: '12px',
+                                        borderRadius: '8px',
                                         color: '#f1f5f9',
-                                        fontSize: '0.9375rem',
+                                        fontSize: '0.875rem',
                                         transition: 'all 0.2s',
                                     }}
                                     onFocus={(e) => {
