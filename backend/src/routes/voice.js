@@ -1,12 +1,21 @@
+// Voice Routes - Refactored Modular Structure
+// Main router that delegates to feature modules
+
 import { Hono } from 'hono';
 import { jwtVerify } from 'jose';
+import { createTokenGenerator } from '../../modules/voice/tokenGenerator.js';
+import { createTwiMLGenerator } from '../../modules/voice/twimlGenerator.js';
+import { createCallHandler } from '../../modules/voice/callHandler.js';
 
 const voice = new Hono();
 
-// Auth middleware (skip for TwiML endpoints)
+// Auth middleware (skip for TwiML and callback endpoints)
 voice.use('*', async (c, next) => {
-    // Skip auth for TwiML and status callbacks
-    if (c.req.path.includes('/twiml') || c.req.path.includes('/status')) {
+    // Skip auth for Twilio callbacks
+    const publicPaths = ['/twiml', '/status', '/recording-status', '/voicemail', '/ivr'];
+    const isPublicPath = publicPaths.some(path => c.req.path.includes(path));
+
+    if (isPublicPath) {
         return await next();
     }
 
@@ -37,89 +46,27 @@ voice.use('*', async (c, next) => {
     }
 });
 
-// Generate Twilio access token for Voice SDK
+// ============================================
+// TOKEN GENERATION
+// ============================================
+
 voice.get('/token', async (c) => {
     try {
         const user = c.get('user');
-        const accountSid = c.env.TWILIO_ACCOUNT_SID;
-        const apiKey = c.env.TWILIO_API_KEY;
-        const apiSecret = c.env.TWILIO_API_SECRET;
-        const twimlAppSid = c.env.TWILIO_TWIML_APP_SID;
+        const tokenGenerator = createTokenGenerator(c.env);
+        const result = await tokenGenerator.generateToken(user.email);
 
-        console.log('Generating token for user:', user.email);
-        console.log('Account SID:', accountSid);
-        console.log('API Key:', apiKey);
-        console.log('TwiML App SID:', twimlAppSid);
-
-        if (!accountSid || !apiKey || !apiSecret || !twimlAppSid) {
-            console.error('Missing Twilio credentials');
-            return c.json({ error: 'Server configuration error' }, 500);
-        }
-
-        // Create JWT token for Twilio Voice
-        const now = Math.floor(Date.now() / 1000);
-        const exp = now + 3600; // 1 hour
-
-        const header = {
-            cty: 'twilio-fpa;v=1',
-            typ: 'JWT',
-            alg: 'HS256'
-        };
-
-        const payload = {
-            jti: `${apiKey}-${now}`,
-            iss: apiKey,
-            sub: accountSid,
-            exp: exp,
-            grants: {
-                identity: user.email,
-                voice: {
-                    outgoing: {
-                        application_sid: twimlAppSid
-                    },
-                    incoming: {
-                        allow: true
-                    }
-                }
-            }
-        };
-
-        // Encode header and payload
-        const encoder = new TextEncoder();
-        const headerB64 = btoa(String.fromCharCode(...encoder.encode(JSON.stringify(header))))
-            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-        const payloadB64 = btoa(String.fromCharCode(...encoder.encode(JSON.stringify(payload))))
-            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-        // Create signature
-        const message = `${headerB64}.${payloadB64}`;
-        const key = await crypto.subtle.importKey(
-            'raw',
-            encoder.encode(apiSecret),
-            { name: 'HMAC', hash: 'SHA-256' },
-            false,
-            ['sign']
-        );
-        const signature = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
-        const signatureB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-
-        const twilioToken = `${message}.${signatureB64}`;
-
-        console.log('Token generated successfully');
-
-        return c.json({
-            token: twilioToken,
-            identity: user.email
-        });
+        return c.json(result);
     } catch (error) {
         console.error('Token generation error:', error);
-        console.error('Error stack:', error.stack);
         return c.json({ error: 'Failed to generate token: ' + error.message }, 500);
     }
 });
 
-// Make outbound call
+// ============================================
+// CALL INITIATION
+// ============================================
+
 voice.post('/call', async (c) => {
     try {
         const user = c.get('user');
@@ -129,109 +76,110 @@ voice.post('/call', async (c) => {
             return c.json({ error: 'Missing required fields: to, from' }, 400);
         }
 
-        // This will be handled by TwiML app
-        return c.json({
-            success: true,
-            message: 'Call initiated',
-            to,
-            from
-        });
+        const callHandler = createCallHandler(c.env.DB, null);
+        const result = await callHandler.initiateCall(user.id, to, from);
+
+        return c.json(result);
     } catch (error) {
         console.error('Call error:', error);
-        return c.json({ error: 'Failed to initiate call' }, 500);
+        return c.json({ error: error.message }, 500);
     }
 });
 
-// TwiML endpoint for handling calls
+// ============================================
+// TWIML GENERATION
+// ============================================
+
 voice.post('/twiml', async (c) => {
     try {
-        console.log('=== TWIML ENDPOINT CALLED ===');
-        console.log('📥 Request Headers:', c.req.header());
+        console.log('=== TWIML ENDPOINT ===');
 
         const body = await c.req.parseBody();
-        console.log('📦 Request Body:', body);
-
         const To = body.To || body.to;
         const From = body.From || body.from;
 
-        console.log('📞 To Number:', To);
-        console.log('📱 From Number (Selected):', From);
-        console.log('🔍 From parameter exists:', !!From);
-        console.log('🔍 To parameter exists:', !!To);
+        console.log('📞 To:', To, 'From:', From);
 
         if (!To) {
-            console.error('No To parameter received');
-            const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say>Sorry, there was an error placing your call.</Say>
-</Response>`;
-            return c.text(errorTwiml, 200, {
+            const twimlGen = createTwiMLGenerator(c.env);
+            return c.text(twimlGen.generateError(), 200, {
                 'Content-Type': 'text/xml'
             });
         }
 
-        // IMPORTANT: No fallback! If From is missing, we want to see the error
         if (!From) {
-            console.error('⚠️ WARNING: No From parameter received! This will cause caller ID issues.');
-            console.error('⚠️ Call will proceed but may use default Twilio number');
+            console.error('⚠️ WARNING: No From parameter received!');
         }
 
-        const callerId = From; // NO FALLBACK - let it fail if From is missing
+        const twimlGen = createTwiMLGenerator(c.env);
+        const twiml = twimlGen.generateOutboundCall(To, From, {
+            record: true,
+            recordingCallback: `${c.env.API_BASE_URL || 'https://voipapp.shaikhrais.workers.dev'}/api/voice/recording-status`,
+            statusCallback: `${c.env.API_BASE_URL || 'https://voipapp.shaikhrais.workers.dev'}/api/voice/status`
+        });
 
-        console.log('🎯 Using Caller ID:', callerId);
+        console.log('📄 Generated TwiML');
 
-        const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Dial callerId="${callerId}">
-        <Number>${To}</Number>
-    </Dial>
-</Response>`;
-
-        console.log('📤 Generated TwiML:', twiml);
-        console.log('============================');
         return c.text(twiml, 200, {
             'Content-Type': 'text/xml'
         });
     } catch (error) {
         console.error('TwiML error:', error);
-        const errorTwiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-    <Say>Sorry, there was an error placing your call.</Say>
-</Response>`;
-        return c.text(errorTwiml, 200, {
+        const twimlGen = createTwiMLGenerator(c.env);
+        return c.text(twimlGen.generateError(), 200, {
             'Content-Type': 'text/xml'
         });
     }
 });
 
-// Call status callback
+// ============================================
+// CALL STATUS CALLBACK
+// ============================================
+
 voice.post('/status', async (c) => {
     try {
         const body = await c.req.parseBody();
-        console.log('Call status:', body);
+        console.log('📊 Call status:', body.CallStatus);
 
         const callSid = body.CallSid;
         const callStatus = body.CallStatus;
         const callDuration = body.CallDuration;
 
         if (callSid) {
-            const db = c.env.DB;
-            await db.prepare(`
-                UPDATE calls 
-                SET status = ?, duration = ?, updated_at = ?
-                WHERE sid = ?
-            `).bind(
-                callStatus,
-                callDuration || 0,
-                Math.floor(Date.now() / 1000),
-                callSid
-            ).run();
-            console.log('Updated call status in database:', callSid, callStatus);
+            const callHandler = createCallHandler(c.env.DB, null);
+            await callHandler.updateCallStatus(callSid, callStatus, callDuration || 0);
         }
 
         return c.text('OK');
     } catch (error) {
         console.error('Status callback error:', error);
+        return c.text('Error', 500);
+    }
+});
+
+// ============================================
+// RECORDING STATUS CALLBACK
+// ============================================
+
+voice.post('/recording-status', async (c) => {
+    try {
+        const body = await c.req.parseBody();
+        console.log('🎙️ Recording status:', body.RecordingStatus);
+
+        const recordingSid = body.RecordingSid;
+        const recordingUrl = body.RecordingUrl;
+        const recordingDuration = body.RecordingDuration;
+        const callSid = body.CallSid;
+
+        if (recordingSid && callSid) {
+            // Store recording metadata
+            // This will be handled by CallRecordingManager in the future
+            console.log(`✅ Recording ${recordingSid} for call ${callSid}`);
+        }
+
+        return c.text('OK');
+    } catch (error) {
+        console.error('Recording callback error:', error);
         return c.text('Error', 500);
     }
 });
