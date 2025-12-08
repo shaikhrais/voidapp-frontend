@@ -24,18 +24,18 @@ const DashboardLayout = () => {
     ];
 
     // Add admin menu items ONLY for super admin (org-super-admin)
-    const adminItems = (user?.role === 'admin' && user?.organization_id === 'org-super-admin') ? [
+    const adminItems = (user?.role === 'super_admin') ? [
         { path: '/dashboard/admin', label: 'Admin Dashboard', icon: Shield },
         { path: '/dashboard/admin/agencies', label: 'Agencies', icon: Building2 },
     ] : [];
 
     // Add agency menu items for agency admins only
-    const agencyItems = (user?.role === 'admin' && user?.organization_id?.startsWith('org-agency')) ? [
+    const agencyItems = (user?.role === 'agency_admin') ? [
         { path: '/dashboard/agency', label: 'Agency Dashboard', icon: Building2 },
     ] : [];
 
     // Add team management for business and agency admins (not super admin)
-    const businessItems = (user?.role === 'admin' && user?.organization_id !== 'org-super-admin') ? [
+    const businessItems = (user?.role === 'business_admin' || user?.role === 'agency_admin') ? [
         { path: '/dashboard/team', label: 'Team Management', icon: Users },
     ] : [];
 
@@ -271,30 +271,6 @@ const DashboardLayout = () => {
                     <div style={styles.userCard}>
                         <div style={styles.avatar}>
                             <User size={20} color="white" />
-                        </div>
-                        <div style={styles.userInfo}>
-                            {/* Role Badge */}
-                            <div style={{
-                                padding: '0.25rem 0.5rem',
-                                background: (user?.role === 'admin' && user?.organization_id === 'org-super-admin') ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' :
-                                    (user?.role === 'admin' && user?.organization_id?.startsWith('org-agency')) ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' :
-                                        (user?.role === 'admin' && user?.organization_id?.startsWith('org-business')) ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' :
-                                            'linear-gradient(135deg, #64748b 0%, #475569 100%)',
-                                borderRadius: '6px',
-                                marginBottom: '0.5rem',
-                                display: sidebarOpen ? 'inline-block' : 'none',
-                            }}>
-                                <span style={{ color: 'white', fontSize: '0.75rem', fontWeight: '600' }}>
-                                    {(user?.role === 'admin' && user?.organization_id === 'org-super-admin') ? '👑 Super Admin' :
-                                        (user?.role === 'admin' && user?.organization_id?.startsWith('org-agency')) ? '🏢 Agency Admin' :
-                                            (user?.role === 'admin' && user?.organization_id?.startsWith('org-business')) ? '💼 Business Admin' :
-                                                '👤 User'}
-                                </span>
-                            </div>
-                            <div style={styles.userName}>User</div>
-                            <div style={styles.userEmail}>{user?.email || 'user@example.com'}</div>
-                        </div>
-                        <button
                             style={styles.logoutBtn}
                             onClick={handleLogout}
                             onMouseEnter={(e) => {
