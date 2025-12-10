@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, Phone, PhoneCall, MessageSquare, Settings, LogOut, User, Menu, Shield, Building2, Users } from 'lucide-react';
+import { LayoutDashboard, Phone, PhoneCall, MessageSquare, Settings, LogOut, User, Menu, Shield, Building2, Users, Monitor, UserCheck, Sliders } from 'lucide-react';
 
 const DashboardLayout = () => {
     const { user, logout } = useAuth();
@@ -19,6 +19,7 @@ const DashboardLayout = () => {
         { path: '/dashboard/dialer', label: 'Dialer', icon: PhoneCall },
         { path: '/dashboard/numbers', label: 'Phone Numbers', icon: Phone },
         { path: '/dashboard/calls', label: 'Call Logs', icon: PhoneCall },
+        { path: '/dashboard/messages', label: 'Messages', icon: MessageSquare },
         { path: '/dashboard/sms', label: 'SMS Logs', icon: MessageSquare },
         { path: '/dashboard/settings', label: 'Settings', icon: Settings },
     ];
@@ -39,7 +40,14 @@ const DashboardLayout = () => {
         { path: '/dashboard/team', label: 'Team Management', icon: Users },
     ] : [];
 
-    const allNavItems = [...adminItems, ...agencyItems, ...businessItems, ...navItems];
+    // Receptionist & Call Queue items (for all users)
+    const receptionistItems = [
+        { path: '/dashboard/agent-dashboard', label: 'Agent Dashboard', icon: UserCheck },
+        { path: '/dashboard/queue-monitor', label: 'Queue Monitor', icon: Monitor },
+        { path: '/dashboard/routing-config', label: 'Call Routing', icon: Sliders },
+    ];
+
+    const allNavItems = [...adminItems, ...agencyItems, ...businessItems, ...receptionistItems, ...navItems];
 
     // Debug logging
     console.log('=== USER DEBUG ===');

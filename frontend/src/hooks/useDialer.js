@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import api from '../../services/api';
+import useNotifications from './useNotifications';
 
 export function useDialer(device) {
     const [phoneNumber, setPhoneNumber] = useState('');
@@ -19,6 +20,14 @@ export function useDialer(device) {
     const callTimerRef = useRef(null);
     const connectionRef = useRef(null);
 
+    // Notifications
+    const { requestPermission, notifyCallStatus, notifyIncomingCall } = useNotifications();
+
+    // Request notification permission on mount
+    useEffect(() => {
+        requestPermission();
+    }, [requestPermission]);
+
     useEffect(() => {
         fetchMyNumbers();
     }, []);
@@ -33,7 +42,7 @@ export function useDialer(device) {
 
     const fetchMyNumbers = async () => {
         try {
-            const response = await api.get('/numbers');
+            const response = await api.get('/admin/numbers');
             const numbers = response.data.numbers || [];
             setMyNumbers(numbers);
 
@@ -78,31 +87,76 @@ export function useDialer(device) {
         connectionRef.current = null;
     };
 
-    const setupConnectionHandlers = (conn) => {
+    const setupConnectionHandlers = (conn, tempCallId) => {
         conn.on('accept', () => {
             console.log('✅ Call accepted');
             setIsCallActive(true);
             startCallTimer();
+            notifyCallStatus('connected', phoneNumber);
         });
 
-        conn.on('disconnect', () => {
+        conn.on('disconnect', async () => {
             console.log('📴 Call disconnected');
+            const duration = callDuration;
+            const sid = conn.parameters.CallSid || tempCallId;
+
             handleCallEnd();
+            notifyCallStatus('completed', phoneNumber);
+
+            // Update call status to completed
+            if (sid) {
+                try {
+                    await api.put(`/calls/update/${sid}`, {
+                        status: 'completed',
+                        duration: duration
+                    });
+                    console.log('✅ Call status updated to completed');
+                } catch (error) {
+                    console.error('Failed to update call status:', error);
+                }
+            }
         });
 
-        conn.on('cancel', () => {
+        conn.on('cancel', async () => {
             console.log('🚫 Call cancelled');
+            const sid = conn.parameters.CallSid || tempCallId;
+
             handleCallEnd();
+            notifyCallStatus('cancelled', phoneNumber);
+
+            // Update call status to cancelled
+            if (sid) {
+                try {
+                    await api.put(`/calls/update/${sid}`, {
+                        status: 'cancelled',
+                        duration: 0
+                    });
+                    console.log('✅ Call status updated to cancelled');
+                } catch (error) {
+                    console.error('Failed to update call status:', error);
+                }
+            }
         });
 
-        conn.on('reject', () => {
+        conn.on('reject', async () => {
             console.log('❌ Call rejected');
-            handleCallEnd();
-        });
+            const sid = conn.parameters.CallSid || tempCallId;
 
-        conn.on('error', (error) => {
-            console.error('❌ Call error:', error);
             handleCallEnd();
+            notifyCallStatus('no-answer', phoneNumber);
+
+            // Update call status to failed
+            if (sid) {
+                try {
+                    await api.put(`/calls/update/${sid}`, {
+                        status: 'no-answer',
+                        duration: 0
+                    });
+                    console.log('✅ Call status updated to no-answer');
+                } catch (error) {
+                    console.error('Failed to update call status:', error);
+                }
+            }
         });
     };
 
@@ -115,6 +169,21 @@ export function useDialer(device) {
         try {
             console.log(`📞 Initiating call from ${selectedNumber} to ${phoneNumber}`);
 
+            // Log call immediately (before connection)
+            const tempCallId = `temp-${Date.now()}`;
+            try {
+                await api.post('/calls/log', {
+                    sid: tempCallId,
+                    from_number: String(selectedNumber), // Ensure it's a string
+                    to_number: String(phoneNumber), // Ensure it's a string
+                    direction: 'outbound'
+                });
+                console.log('✅ Call logged with temp ID:', tempCallId);
+            } catch (logError) {
+                console.error('Failed to log call:', logError);
+                console.error('Log error details:', logError.response?.data);
+            }
+
             const params = {
                 To: phoneNumber,
                 From: selectedNumber
@@ -124,20 +193,23 @@ export function useDialer(device) {
 
             connectionRef.current = conn;
             setCurrentConnection(conn);
-            setupConnectionHandlers(conn);
+            setupConnectionHandlers(conn, tempCallId);
 
-            // Log call to backend
-            try {
-                const callSid = conn.parameters.CallSid;
-                await api.post('/calls/log', {
-                    sid: callSid,
-                    from_number: selectedNumber,
-                    to_number: phoneNumber,
-                    direction: 'outbound'
-                });
-            } catch (logError) {
-                console.error('Failed to log call:', logError);
-            }
+            // Update call log with real Twilio SID when available
+            conn.on('ringing', async () => {
+                try {
+                    const callSid = conn.parameters.CallSid;
+                    if (callSid && callSid !== tempCallId) {
+                        console.log('📞 Call ringing, updating with real SID:', callSid);
+                        await api.put(`/calls/update/${tempCallId}`, {
+                            sid: callSid,
+                            status: 'ringing'
+                        });
+                    }
+                } catch (error) {
+                    console.error('Failed to update call SID:', error);
+                }
+            });
 
         } catch (error) {
             console.error('❌ Call failed:', error);

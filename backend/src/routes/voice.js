@@ -3,9 +3,9 @@
 
 import { Hono } from 'hono';
 import { jwtVerify } from 'jose';
-import { createTokenGenerator } from '../../modules/voice/tokenGenerator.js';
-import { createTwiMLGenerator } from '../../modules/voice/twimlGenerator.js';
-import { createCallHandler } from '../../modules/voice/callHandler.js';
+import { createTokenGenerator } from '../modules/voice/tokenGenerator.js';
+import { createTwiMLGenerator } from '../modules/voice/twimlGenerator.js';
+import { createCallHandler } from '../modules/voice/callHandler.js';
 
 const voice = new Hono();
 

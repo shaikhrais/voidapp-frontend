@@ -1,627 +1,575 @@
-import React, { useEffect, useState } from 'react';
-import { Plus, Users, Mail, Shield, X, Edit, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Users, Plus, Edit, Trash2, UserPlus, Settings as SettingsIcon, Phone } from 'lucide-react';
 import api from '../services/api';
 
 const TeamManagement = () => {
-    const [team, setTeam] = useState([]);
+    const [teams, setTeams] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [showInviteModal, setShowInviteModal] = useState(false);
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [selectedMember, setSelectedMember] = useState(null);
-    const [creationMethod, setCreationMethod] = useState('create'); // 'invite' or 'create'
-    const [inviteData, setInviteData] = useState({
-        email: '',
-        role: 'user',
-        full_name: '',
-        password: '',
-    });
-    const [createdUser, setCreatedUser] = useState(null); // Store created user info
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [editingTeam, setEditingTeam] = useState(null);
+    const [selectedTeam, setSelectedTeam] = useState(null);
+    const [teamMembers, setTeamMembers] = useState([]);
+    const [message, setMessage] = useState({ type: '', text: '' });
 
     useEffect(() => {
-        fetchTeam();
+        fetchTeams();
     }, []);
 
-    const fetchTeam = async () => {
+    const fetchTeams = async () => {
         try {
-            const response = await api.get('/business/team');
-            setTeam(response.data.team);
+            setLoading(true);
+            const response = await api.get('/teams');
+            setTeams(response.data.teams || []);
         } catch (error) {
-            console.error('Error fetching team:', error);
+            console.error('Error fetching teams:', error);
+            setMessage({ type: 'error', text: 'Failed to load teams' });
         } finally {
             setLoading(false);
         }
     };
 
-    const handleInvite = async (e) => {
-        e.preventDefault();
+    const fetchTeamMembers = async (teamId) => {
         try {
-            if (creationMethod === 'create') {
-                // Direct user creation
-                const response = await api.post('/business/team/create', {
-                    email: inviteData.email,
-                    role: inviteData.role,
-                    full_name: inviteData.full_name,
-                    password: inviteData.password || undefined
-                });
-                setCreatedUser(response.data.user);
-                alert(response.data.message);
-                fetchTeam(); // Refresh team list
-            } else {
-                // Invitation method
-                const response = await api.post('/business/team/invite', {
-                    email: inviteData.email,
-                    role: inviteData.role
-                });
-                alert(`Invitation sent! Link: ${response.data.invitationLink}`);
-            }
-            setShowInviteModal(false);
-            setInviteData({ email: '', role: 'user', full_name: '', password: '' });
+            const response = await api.get(`/teams/${teamId}/members`);
+            setTeamMembers(response.data.members || []);
         } catch (error) {
-            console.error('Error inviting user:', error);
-            alert(error.response?.data?.error || 'Failed to send invitation');
+            console.error('Error fetching members:', error);
         }
     };
 
-    const handleUpdatePermissions = async (e) => {
-        e.preventDefault();
+    const handleCreateTeam = async (teamData) => {
         try {
-            await api.put(`/business/team/${selectedMember.id}`, {
-                can_make_calls: selectedMember.can_make_calls,
-                can_send_sms: selectedMember.can_send_sms,
-                can_buy_numbers: selectedMember.can_buy_numbers,
-                can_manage_users: selectedMember.can_manage_users,
-                can_view_billing: selectedMember.can_view_billing,
-            });
-            setShowEditModal(false);
-            fetchTeam();
+            await api.post('/teams', teamData);
+            setMessage({ type: 'success', text: 'Team created successfully!' });
+            fetchTeams();
+            setShowCreateModal(false);
+            setTimeout(() => setMessage({ type: '', text: '' }), 3000);
         } catch (error) {
-            console.error('Error updating permissions:', error);
-            alert('Failed to update permissions');
+            console.error('Error creating team:', error);
+            setMessage({ type: 'error', text: 'Failed to create team' });
         }
     };
 
-    const handleRemove = async (userId) => {
-        if (!confirm('Are you sure you want to remove this team member?')) return;
+    const handleUpdateTeam = async (teamId, teamData) => {
+        try {
+            await api.put(`/teams/${teamId}`, teamData);
+            setMessage({ type: 'success', text: 'Team updated successfully!' });
+            fetchTeams();
+            setEditingTeam(null);
+            setTimeout(() => setMessage({ type: '', text: '' }), 3000);
+        } catch (error) {
+            console.error('Error updating team:', error);
+            setMessage({ type: 'error', text: 'Failed to update team' });
+        }
+    };
+
+    const handleDeleteTeam = async (teamId) => {
+        if (!confirm('Are you sure you want to delete this team?')) return;
 
         try {
-            await api.delete(`/business/team/${userId}`);
-            fetchTeam();
+            await api.delete(`/teams/${teamId}`);
+            setMessage({ type: 'success', text: 'Team deleted successfully!' });
+            fetchTeams();
+            setTimeout(() => setMessage({ type: '', text: '' }), 3000);
         } catch (error) {
-            console.error('Error removing member:', error);
-            alert(error.response?.data?.error || 'Failed to remove member');
+            console.error('Error deleting team:', error);
+            setMessage({ type: 'error', text: 'Failed to delete team' });
         }
+    };
+
+    const handleViewMembers = (team) => {
+        setSelectedTeam(team);
+        fetchTeamMembers(team.id);
     };
 
     if (loading) {
-        return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '400px', color: '#94a3b8' }}>Loading...</div>;
+        return (
+            <div style={{ padding: '2rem', textAlign: 'center', color: '#94a3b8' }}>
+                <p>Loading teams...</p>
+            </div>
+        );
     }
 
     return (
-        <div>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <div>
-                    <h1 style={{ fontSize: '2rem', fontWeight: '700', color: '#f1f5f9', marginBottom: '0.5rem' }}>
-                        Team Management
-                    </h1>
-                    <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
-                        Manage your team members and their permissions
+        <div style={{
+            minHeight: '100vh',
+            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            padding: '2rem',
+        }}>
+            <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+                {/* Header */}
+                <div style={{ marginBottom: '2rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <Users size={32} color="#3b82f6" />
+                            <h1 style={{ fontSize: '2rem', fontWeight: '700', color: '#f1f5f9', margin: 0 }}>
+                                Team Management
+                            </h1>
+                        </div>
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: '#fff',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                            }}
+                        >
+                            <Plus size={20} />
+                            Create Team
+                        </button>
+                    </div>
+                    <p style={{ color: '#94a3b8', fontSize: '1rem' }}>
+                        Manage teams and call distribution for your organization
                     </p>
                 </div>
-                <button
-                    onClick={() => setShowInviteModal(true)}
-                    style={{
-                        padding: '0.75rem 1.5rem',
-                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '8px',
-                        fontSize: '0.875rem',
-                        fontWeight: '600',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                    }}
-                >
-                    <Plus size={18} />
-                    Invite Member
-                </button>
-            </div>
 
-            {/* Team List */}
-            <div style={{ background: '#1e293b', borderRadius: '12px', border: '1px solid #334155', padding: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#f1f5f9', marginBottom: '1.5rem' }}>
-                    Team Members ({team.length})
-                </h2>
-                {team.length === 0 ? (
-                    <p style={{ color: '#94a3b8', textAlign: 'center', padding: '2rem' }}>No team members yet</p>
-                ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        {team.map((member) => (
-                            <div
-                                key={member.id}
-                                style={{
-                                    padding: '1.5rem',
+                {/* Message */}
+                {message.text && (
+                    <div style={{
+                        padding: '1rem',
+                        background: message.type === 'success' ? '#10b98120' : '#ef444420',
+                        border: `1px solid ${message.type === 'success' ? '#10b981' : '#ef4444'}`,
+                        borderRadius: '8px',
+                        color: message.type === 'success' ? '#10b981' : '#ef4444',
+                        marginBottom: '2rem',
+                    }}>
+                        {message.text}
+                    </div>
+                )}
+
+                {/* Teams Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem' }}>
+                    {teams.map((team) => (
+                        <div key={team.id} style={{
+                            background: '#1e293b',
+                            borderRadius: '16px',
+                            padding: '1.5rem',
+                            border: '1px solid #334155',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'start', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#f1f5f9', marginBottom: '0.5rem' }}>
+                                        {team.name}
+                                    </h3>
+                                    {team.description && (
+                                        <p style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                                            {team.description}
+                                        </p>
+                                    )}
+                                </div>
+                                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                        onClick={() => setEditingTeam(team)}
+                                        style={{
+                                            padding: '0.5rem',
+                                            background: '#334155',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            color: '#94a3b8',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        <Edit size={16} />
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteTeam(team.id)}
+                                        style={{
+                                            padding: '0.5rem',
+                                            background: '#334155',
+                                            border: 'none',
+                                            borderRadius: '6px',
+                                            color: '#ef4444',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div style={{ marginBottom: '1rem' }}>
+                                <div style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                                    Distribution Strategy
+                                </div>
+                                <div style={{
+                                    padding: '0.5rem 1rem',
                                     background: '#0f172a',
+                                    borderRadius: '6px',
+                                    color: '#3b82f6',
+                                    fontSize: '0.875rem',
+                                    fontWeight: '600',
+                                    textTransform: 'capitalize',
+                                }}>
+                                    {team.distribution_strategy.replace('_', ' ')}
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Max Queue</div>
+                                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#f1f5f9' }}>{team.max_queue_size}</div>
+                                </div>
+                                <div>
+                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>Ring Timeout</div>
+                                    <div style={{ fontSize: '1rem', fontWeight: '600', color: '#f1f5f9' }}>{team.ring_timeout}s</div>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => handleViewMembers(team)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    background: '#334155',
+                                    border: 'none',
                                     borderRadius: '8px',
-                                    border: '1px solid #334155',
+                                    color: '#f1f5f9',
+                                    fontWeight: '600',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '0.5rem',
                                 }}
                             >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                                    <div>
-                                        <div style={{ color: '#f1f5f9', fontWeight: '600', fontSize: '1.125rem', marginBottom: '0.25rem' }}>
-                                            {member.full_name || member.email}
-                                        </div>
-                                        <div style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
-                                            {member.email}
-                                        </div>
-                                        <div style={{
-                                            marginTop: '0.5rem',
-                                            padding: '0.25rem 0.75rem',
-                                            background: member.role === 'business_admin' ? '#667eea20' : '#64748b20',
-                                            color: member.role === 'business_admin' ? '#667eea' : '#94a3b8',
-                                            borderRadius: '6px',
-                                            fontSize: '0.75rem',
-                                            fontWeight: '600',
-                                            display: 'inline-block',
-                                        }}>
-                                            {member.role === 'business_admin' ? 'Admin' : 'User'}
-                                        </div>
-                                    </div>
-                                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                        <button
-                                            onClick={() => {
-                                                setSelectedMember(member);
-                                                setShowEditModal(true);
-                                            }}
-                                            style={{
-                                                padding: '0.5rem',
-                                                background: '#334155',
-                                                border: '1px solid #475569',
-                                                borderRadius: '6px',
-                                                color: '#f1f5f9',
-                                                cursor: 'pointer',
-                                            }}
-                                        >
-                                            <Edit size={16} />
-                                        </button>
-                                        {member.role !== 'business_admin' && (
-                                            <button
-                                                onClick={() => handleRemove(member.id)}
-                                                style={{
-                                                    padding: '0.5rem',
-                                                    background: 'rgba(239, 68, 68, 0.1)',
-                                                    border: '1px solid rgba(239, 68, 68, 0.3)',
-                                                    borderRadius: '6px',
-                                                    color: '#ef4444',
-                                                    cursor: 'pointer',
-                                                }}
-                                            >
-                                                <Trash2 size={16} />
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
+                                <UserPlus size={18} />
+                                Manage Members
+                            </button>
+                        </div>
+                    ))}
+                </div>
 
-                                {/* Permissions */}
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
-                                    {[
-                                        { key: 'can_make_calls', label: 'Make Calls' },
-                                        { key: 'can_send_sms', label: 'Send SMS' },
-                                        { key: 'can_buy_numbers', label: 'Buy Numbers' },
-                                        { key: 'can_manage_users', label: 'Manage Users' },
-                                        { key: 'can_view_billing', label: 'View Billing' },
-                                    ].map((perm) => (
-                                        <div
-                                            key={perm.key}
-                                            onClick={async () => {
-                                                // Toggle permission instantly
-                                                const newValue = member[perm.key] ? 0 : 1;
-                                                try {
-                                                    await api.put(`/business/team/${member.id}`, {
-                                                        [perm.key]: newValue
-                                                    });
-                                                    // Update local state
-                                                    fetchTeam();
-                                                } catch (error) {
-                                                    console.error('Error updating permission:', error);
-                                                    alert('Failed to update permission');
-                                                }
-                                            }}
-                                            style={{
-                                                padding: '0.5rem',
-                                                background: member[perm.key] ? '#10b98120' : '#64748b20',
-                                                borderRadius: '6px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '0.5rem',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s',
-                                                border: '1px solid transparent',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.borderColor = member[perm.key] ? '#10b981' : '#64748b';
-                                                e.currentTarget.style.transform = 'scale(1.02)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.borderColor = 'transparent';
-                                                e.currentTarget.style.transform = 'scale(1)';
-                                            }}
-                                        >
-                                            <div style={{
-                                                width: '8px',
-                                                height: '8px',
-                                                borderRadius: '50%',
-                                                background: member[perm.key] ? '#10b981' : '#64748b',
-                                            }} />
-                                            <span style={{
-                                                color: member[perm.key] ? '#10b981' : '#94a3b8',
-                                                fontSize: '0.75rem',
-                                                fontWeight: '600',
-                                            }}>
-                                                {perm.label}
-                                            </span>
-                                        </div>
-                                    ))}
+                {teams.length === 0 && (
+                    <div style={{
+                        textAlign: 'center',
+                        padding: '4rem 2rem',
+                        background: '#1e293b',
+                        borderRadius: '16px',
+                        border: '1px solid #334155',
+                    }}>
+                        <Users size={48} color="#64748b" style={{ margin: '0 auto 1rem' }} />
+                        <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#f1f5f9', marginBottom: '0.5rem' }}>
+                            No teams yet
+                        </h3>
+                        <p style={{ color: '#94a3b8', marginBottom: '1.5rem' }}>
+                            Create your first team to start managing call distribution
+                        </p>
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            style={{
+                                padding: '0.75rem 1.5rem',
+                                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: '#fff',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.5rem',
+                            }}
+                        >
+                            <Plus size={20} />
+                            Create Team
+                        </button>
+                    </div>
+                )}
+            </div>
+
+            {/* Create/Edit Modal */}
+            {(showCreateModal || editingTeam) && (
+                <TeamModal
+                    team={editingTeam}
+                    onClose={() => {
+                        setShowCreateModal(false);
+                        setEditingTeam(null);
+                    }}
+                    onSave={(data) => {
+                        if (editingTeam) {
+                            handleUpdateTeam(editingTeam.id, data);
+                        } else {
+                            handleCreateTeam(data);
+                        }
+                    }}
+                />
+            )}
+
+            {/* Members Modal */}
+            {selectedTeam && (
+                <MembersModal
+                    team={selectedTeam}
+                    members={teamMembers}
+                    onClose={() => setSelectedTeam(null)}
+                    onRefresh={() => fetchTeamMembers(selectedTeam.id)}
+                />
+            )}
+        </div>
+    );
+};
+
+// Team Create/Edit Modal Component
+const TeamModal = ({ team, onClose, onSave }) => {
+    const [formData, setFormData] = useState({
+        name: team?.name || '',
+        description: team?.description || '',
+        distribution_strategy: team?.distribution_strategy || 'round_robin',
+        max_queue_size: team?.max_queue_size || 50,
+        max_wait_time: team?.max_wait_time || 300,
+        overflow_action: team?.overflow_action || 'voicemail',
+        ring_timeout: team?.ring_timeout || 30,
+    });
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave(formData);
+    };
+
+    return (
+        <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+        }} onClick={onClose}>
+            <div style={{
+                background: '#1e293b',
+                borderRadius: '16px',
+                padding: '2rem',
+                maxWidth: '500px',
+                width: '90%',
+                maxHeight: '90vh',
+                overflow: 'auto',
+                border: '1px solid #334155',
+            }} onClick={(e) => e.stopPropagation()}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#f1f5f9', marginBottom: '1.5rem' }}>
+                    {team ? 'Edit Team' : 'Create Team'}
+                </h2>
+
+                <form onSubmit={handleSubmit}>
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                            Team Name *
+                        </label>
+                        <input
+                            type="text"
+                            value={formData.name}
+                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                            required
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '8px',
+                                color: '#f1f5f9',
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                            Description
+                        </label>
+                        <textarea
+                            value={formData.description}
+                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                            rows={3}
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '8px',
+                                color: '#f1f5f9',
+                                fontFamily: 'inherit',
+                            }}
+                        />
+                    </div>
+
+                    <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                            Distribution Strategy
+                        </label>
+                        <select
+                            value={formData.distribution_strategy}
+                            onChange={(e) => setFormData({ ...formData, distribution_strategy: e.target.value })}
+                            style={{
+                                width: '100%',
+                                padding: '0.75rem',
+                                background: '#0f172a',
+                                border: '1px solid #334155',
+                                borderRadius: '8px',
+                                color: '#f1f5f9',
+                            }}
+                        >
+                            <option value="round_robin">Round Robin</option>
+                            <option value="longest_idle">Longest Idle</option>
+                            <option value="simultaneous">Simultaneous Ring</option>
+                            <option value="skills_based">Skills Based</option>
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                                Max Queue Size
+                            </label>
+                            <input
+                                type="number"
+                                value={formData.max_queue_size}
+                                onChange={(e) => setFormData({ ...formData, max_queue_size: parseInt(e.target.value) })}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    background: '#0f172a',
+                                    border: '1px solid #334155',
+                                    borderRadius: '8px',
+                                    color: '#f1f5f9',
+                                }}
+                            />
+                        </div>
+                        <div>
+                            <label style={{ display: 'block', fontSize: '0.875rem', color: '#94a3b8', marginBottom: '0.5rem' }}>
+                                Ring Timeout (s)
+                            </label>
+                            <input
+                                type="number"
+                                value={formData.ring_timeout}
+                                onChange={(e) => setFormData({ ...formData, ring_timeout: parseInt(e.target.value) })}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.75rem',
+                                    background: '#0f172a',
+                                    border: '1px solid #334155',
+                                    borderRadius: '8px',
+                                    color: '#f1f5f9',
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            style={{
+                                flex: 1,
+                                padding: '0.75rem',
+                                background: '#334155',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: '#f1f5f9',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            style={{
+                                flex: 1,
+                                padding: '0.75rem',
+                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                border: 'none',
+                                borderRadius: '8px',
+                                color: '#fff',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            {team ? 'Update' : 'Create'}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+};
+
+// Members Modal Component (Placeholder)
+const MembersModal = ({ team, members, onClose, onRefresh }) => {
+    return (
+        <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.7)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+        }} onClick={onClose}>
+            <div style={{
+                background: '#1e293b',
+                borderRadius: '16px',
+                padding: '2rem',
+                maxWidth: '600px',
+                width: '90%',
+                maxHeight: '90vh',
+                overflow: 'auto',
+                border: '1px solid #334155',
+            }} onClick={(e) => e.stopPropagation()}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#f1f5f9', marginBottom: '1.5rem' }}>
+                    {team.name} - Members
+                </h2>
+
+                {members.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '2rem', color: '#94a3b8' }}>
+                        No members yet. Add members to this team.
+                    </div>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {members.map((member) => (
+                            <div key={member.id} style={{
+                                padding: '1rem',
+                                background: '#0f172a',
+                                borderRadius: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                            }}>
+                                <div>
+                                    <div style={{ color: '#f1f5f9', fontWeight: '600' }}>{member.name || member.email}</div>
+                                    <div style={{ color: '#64748b', fontSize: '0.875rem' }}>{member.role}</div>
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
+
+                <button
+                    onClick={onClose}
+                    style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        background: '#334155',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#f1f5f9',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        marginTop: '1.5rem',
+                    }}
+                >
+                    Close
+                </button>
             </div>
-
-            {/* Invite Modal */}
-            {showInviteModal && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000,
-                    padding: '1rem',
-                }}>
-                    <div style={{
-                        background: '#1e293b',
-                        borderRadius: '12px',
-                        border: '1px solid #334155',
-                        maxWidth: '500px',
-                        width: '100%',
-                    }}>
-                        <div style={{
-                            padding: '1.5rem',
-                            borderBottom: '1px solid #334155',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                        }}>
-                            <h2 style={{ color: '#f1f5f9', fontSize: '1.25rem', fontWeight: '700' }}>
-                                Invite Team Member
-                            </h2>
-                            <button onClick={() => setShowInviteModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleInvite} style={{ padding: '1.5rem' }}>
-                            {/* Method Toggle */}
-                            <div style={{
-                                display: 'flex',
-                                gap: '0.5rem',
-                                marginBottom: '1.5rem',
-                                background: '#0f172a',
-                                padding: '0.25rem',
-                                borderRadius: '8px'
-                            }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setCreationMethod('create')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.75rem',
-                                        background: creationMethod === 'create' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        color: 'white',
-                                        fontSize: '0.875rem',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    ✨ Create Directly
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setCreationMethod('invite')}
-                                    style={{
-                                        flex: 1,
-                                        padding: '0.75rem',
-                                        background: creationMethod === 'invite' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        color: 'white',
-                                        fontSize: '0.875rem',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s'
-                                    }}
-                                >
-                                    📧 Send Invite
-                                </button>
-                            </div>
-
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                                        Email Address *
-                                    </label>
-                                    <input
-                                        type="email"
-                                        required
-                                        value={inviteData.email}
-                                        onChange={(e) => setInviteData({ ...inviteData, email: e.target.value })}
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            background: '#0f172a',
-                                            border: '1px solid #334155',
-                                            borderRadius: '8px',
-                                            color: '#f1f5f9',
-                                            fontSize: '0.875rem',
-                                        }}
-                                    />
-                                </div>
-
-                                {creationMethod === 'create' && (
-                                    <>
-                                        <div>
-                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                                                Full Name
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={inviteData.full_name}
-                                                onChange={(e) => setInviteData({ ...inviteData, full_name: e.target.value })}
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '0.75rem',
-                                                    background: '#0f172a',
-                                                    border: '1px solid #334155',
-                                                    borderRadius: '8px',
-                                                    color: '#f1f5f9',
-                                                    fontSize: '0.875rem',
-                                                }}
-                                            />
-                                        </div>
-
-                                        <div>
-                                            <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                                                Password (leave empty for auto-generated)
-                                            </label>
-                                            <input
-                                                type="text"
-                                                value={inviteData.password}
-                                                onChange={(e) => setInviteData({ ...inviteData, password: e.target.value })}
-                                                placeholder="Auto-generate if empty"
-                                                style={{
-                                                    width: '100%',
-                                                    padding: '0.75rem',
-                                                    background: '#0f172a',
-                                                    border: '1px solid #334155',
-                                                    borderRadius: '8px',
-                                                    color: '#f1f5f9',
-                                                    fontSize: '0.875rem',
-                                                }}
-                                            />
-                                            <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem' }}>
-                                                Leave empty to auto-generate a temporary password
-                                            </p>
-                                        </div>
-                                    </>
-                                )}
-
-                                <div>
-                                    <label style={{ display: 'block', color: '#94a3b8', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                                        Role *
-                                    </label>
-                                    <select
-                                        value={inviteData.role}
-                                        onChange={(e) => setInviteData({ ...inviteData, role: e.target.value })}
-                                        style={{
-                                            width: '100%',
-                                            padding: '0.75rem',
-                                            background: '#0f172a',
-                                            border: '1px solid #334155',
-                                            borderRadius: '8px',
-                                            color: '#f1f5f9',
-                                            fontSize: '0.875rem',
-                                        }}
-                                    >
-                                        <option value="user">User</option>
-                                        <option value="business_admin">Admin</option>
-                                    </select>
-                                </div>
-
-                                {creationMethod === 'create' && (
-                                    <div style={{
-                                        padding: '1rem',
-                                        background: '#10b98110',
-                                        border: '1px solid #10b98130',
-                                        borderRadius: '8px',
-                                        color: '#10b981',
-                                        fontSize: '0.875rem'
-                                    }}>
-                                        ✨ User will be created immediately and can login right away!
-                                    </div>
-                                )}
-
-                                {creationMethod === 'invite' && (
-                                    <div style={{
-                                        padding: '1rem',
-                                        background: '#3b82f610',
-                                        border: '1px solid #3b82f630',
-                                        borderRadius: '8px',
-                                        color: '#3b82f6',
-                                        fontSize: '0.875rem'
-                                    }}>
-                                        📧 User will receive an invitation link to complete registration
-                                    </div>
-                                )}
-                            </div>
-
-                            <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowInviteModal(false)}
-                                    style={{
-                                        padding: '0.75rem 1.5rem',
-                                        background: '#334155',
-                                        border: '1px solid #475569',
-                                        borderRadius: '8px',
-                                        color: '#f1f5f9',
-                                        fontSize: '0.875rem',
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    style={{
-                                        padding: '0.75rem 1.5rem',
-                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        color: 'white',
-                                        fontSize: '0.875rem',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    {creationMethod === 'create' ? '✨ Create User' : '📧 Send Invitation'}
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
-
-            {/* Edit Permissions Modal */}
-            {showEditModal && selectedMember && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.7)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000,
-                    padding: '1rem',
-                }}>
-                    <div style={{
-                        background: '#1e293b',
-                        borderRadius: '12px',
-                        border: '1px solid #334155',
-                        maxWidth: '500px',
-                        width: '100%',
-                    }}>
-                        <div style={{
-                            padding: '1.5rem',
-                            borderBottom: '1px solid #334155',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                        }}>
-                            <h2 style={{ color: '#f1f5f9', fontSize: '1.25rem', fontWeight: '700' }}>
-                                Edit Permissions
-                            </h2>
-                            <button onClick={() => setShowEditModal(false)} style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer' }}>
-                                <X size={24} />
-                            </button>
-                        </div>
-
-                        <form onSubmit={handleUpdatePermissions} style={{ padding: '1.5rem' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                                {[
-                                    { key: 'can_make_calls', label: 'Can Make Calls' },
-                                    { key: 'can_send_sms', label: 'Can Send SMS' },
-                                    { key: 'can_buy_numbers', label: 'Can Buy Numbers' },
-                                    { key: 'can_manage_users', label: 'Can Manage Users' },
-                                    { key: 'can_view_billing', label: 'Can View Billing' },
-                                ].map((perm) => (
-                                    <label
-                                        key={perm.key}
-                                        style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '0.75rem',
-                                            padding: '0.75rem',
-                                            background: '#0f172a',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                        }}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedMember[perm.key] === 1}
-                                            onChange={(e) => setSelectedMember({
-                                                ...selectedMember,
-                                                [perm.key]: e.target.checked ? 1 : 0
-                                            })}
-                                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                                        />
-                                        <span style={{ color: '#f1f5f9', fontSize: '0.875rem' }}>
-                                            {perm.label}
-                                        </span>
-                                    </label>
-                                ))}
-                            </div>
-
-                            <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowEditModal(false)}
-                                    style={{
-                                        padding: '0.75rem 1.5rem',
-                                        background: '#334155',
-                                        border: '1px solid #475569',
-                                        borderRadius: '8px',
-                                        color: '#f1f5f9',
-                                        fontSize: '0.875rem',
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    type="submit"
-                                    style={{
-                                        padding: '0.75rem 1.5rem',
-                                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        color: 'white',
-                                        fontSize: '0.875rem',
-                                        fontWeight: '600',
-                                        cursor: 'pointer',
-                                    }}
-                                >
-                                    Save Changes
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            )}
         </div>
     );
 };

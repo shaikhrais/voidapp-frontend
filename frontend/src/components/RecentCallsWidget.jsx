@@ -1,12 +1,22 @@
 import React, { useState, useEffect } from 'react';
+import { Phone, PhoneIncoming, PhoneOutgoing, PhoneMissed, MessageSquare } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 
 const RecentCallsWidget = ({ refreshTrigger }) => {
     const [recentCalls, setRecentCalls] = useState([]);
     const [loadingCalls, setLoadingCalls] = useState(false);
+    const navigate = useNavigate();
 
     useEffect(() => {
         fetchRecentCalls();
+
+        // Auto-refresh every 5 seconds
+        const interval = setInterval(() => {
+            fetchRecentCalls();
+        }, 5000);
+
+        return () => clearInterval(interval);
     }, [refreshTrigger]);
 
     const fetchRecentCalls = async () => {
@@ -14,7 +24,7 @@ const RecentCallsWidget = ({ refreshTrigger }) => {
             console.log('🔄 Fetching recent calls...');
             setLoadingCalls(true);
 
-            const response = await api.get('/api/calls/recent');
+            const response = await api.get('/calls/recent');
 
             console.log('✅ Recent calls response:', response.data);
             console.log('📊 Number of calls:', response.data.calls?.length || 0);
@@ -28,10 +38,61 @@ const RecentCallsWidget = ({ refreshTrigger }) => {
         }
     };
 
+    const getTimeAgo = (timestamp) => {
+        const now = Math.floor(Date.now() / 1000);
+        const diff = now - timestamp;
+
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) {
+            const mins = Math.floor(diff / 60);
+            return `${mins} ${mins === 1 ? 'minute' : 'minutes'} ago`;
+        }
+        if (diff < 86400) {
+            const hours = Math.floor(diff / 3600);
+            return `${hours} ${hours === 1 ? 'hour' : 'hours'} ago`;
+        }
+        if (diff < 604800) {
+            const days = Math.floor(diff / 86400);
+            return `${days} ${days === 1 ? 'day' : 'days'} ago`;
+        }
+
+        // For older calls, show date
+        const date = new Date(timestamp * 1000);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    };
+
+    const formatPhoneNumber = (number) => {
+        if (!number) return '';
+        // Remove +1 and format as (XXX) XXX-XXXX
+        const cleaned = number.replace(/\D/g, '');
+        if (cleaned.length === 11 && cleaned.startsWith('1')) {
+            const areaCode = cleaned.slice(1, 4);
+            const firstPart = cleaned.slice(4, 7);
+            const secondPart = cleaned.slice(7);
+            return `(${areaCode}) ${firstPart}-${secondPart}`;
+        }
+        return number;
+    };
+
+    const getCallIcon = (call) => {
+        if (call.direction === 'outbound') {
+            return <PhoneOutgoing size={20} color="#10b981" />;
+        } else if (call.status === 'completed') {
+            return <PhoneIncoming size={20} color="#3b82f6" />;
+        } else {
+            return <PhoneMissed size={20} color="#ef4444" />;
+        }
+    };
+
     const handleCallClick = (call) => {
         const number = call.direction === 'outbound' ? call.to_number : call.from_number;
-        // You could emit an event or use a callback to set the number in the dialer
         console.log('Clicked call:', number);
+    };
+
+    const handleSmsClick = (e, call) => {
+        e.stopPropagation(); // Prevent call click
+        const number = call.direction === 'outbound' ? call.to_number : call.from_number;
+        navigate('/dashboard/messages', { state: { toNumber: number } });
     };
 
     return (
@@ -50,7 +111,7 @@ const RecentCallsWidget = ({ refreshTrigger }) => {
                 color: '#f1f5f9',
                 marginBottom: '1.5rem',
             }}>
-                📞 Recent Calls
+                Recent Calls
             </h3>
 
             {loadingCalls ? (
@@ -62,7 +123,7 @@ const RecentCallsWidget = ({ refreshTrigger }) => {
                     No recent calls yet
                 </div>
             ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '700px', overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '700px', overflowY: 'auto' }}>
                     {recentCalls.slice(0, 20).map((call) => (
                         <div
                             key={call.id}
@@ -71,45 +132,103 @@ const RecentCallsWidget = ({ refreshTrigger }) => {
                                 background: '#0f172a',
                                 borderRadius: '12px',
                                 display: 'flex',
-                                justifyContent: 'space-between',
                                 alignItems: 'center',
+                                gap: '1rem',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s',
-                                border: '1px solid #334155',
+                                border: '1px solid transparent',
                             }}
                             onClick={() => handleCallClick(call)}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.background = '#1e293b';
-                                e.currentTarget.style.transform = 'translateX(4px)';
+                                e.currentTarget.style.borderColor = '#475569';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.background = '#0f172a';
-                                e.currentTarget.style.transform = 'translateX(0)';
+                                e.currentTarget.style.borderColor = 'transparent';
                             }}
                         >
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '1rem', fontWeight: '600', color: '#f1f5f9', marginBottom: '0.5rem' }}>
-                                    {call.direction === 'outbound' ? '📞 ' : '📱 '}
-                                    {call.direction === 'outbound' ? call.to_number : call.from_number}
-                                </div>
-                                <div style={{ fontSize: '0.875rem', color: '#94a3b8', marginBottom: '0.25rem' }}>
-                                    {new Date(call.created_at * 1000).toLocaleString()}
-                                </div>
-                                {call.user_email && (
-                                    <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                                        by {call.user_email}
-                                    </div>
-                                )}
+                            {/* Call Icon */}
+                            <div style={{
+                                width: '40px',
+                                height: '40px',
+                                borderRadius: '50%',
+                                background: '#334155',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                            }}>
+                                {getCallIcon(call)}
                             </div>
+
+                            {/* Call Details */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{
+                                    fontSize: '1rem',
+                                    fontWeight: '600',
+                                    color: '#f1f5f9',
+                                    marginBottom: '0.25rem',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                }}>
+                                    {formatPhoneNumber(call.direction === 'outbound' ? call.to_number : call.from_number)}
+                                </div>
+                                <div style={{
+                                    fontSize: '0.875rem',
+                                    color: '#94a3b8',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                }}>
+                                    <span style={{ textTransform: 'capitalize' }}>
+                                        {call.direction === 'outbound' ? 'Outgoing' : 'Incoming'}
+                                    </span>
+                                    {call.duration && (
+                                        <>
+                                            <span>•</span>
+                                            <span>{call.duration}s</span>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* SMS Button */}
+                            <button
+                                onClick={(e) => handleSmsClick(e, call)}
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '8px',
+                                    background: '#334155',
+                                    border: 'none',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s',
+                                    flexShrink: 0,
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = '#3b82f6';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = '#334155';
+                                }}
+                                title="Send SMS"
+                            >
+                                <MessageSquare size={18} color="#f1f5f9" />
+                            </button>
+
+                            {/* Time Ago */}
                             <div style={{
                                 fontSize: '0.875rem',
-                                padding: '0.5rem 1rem',
-                                borderRadius: '8px',
-                                background: call.status === 'completed' ? '#10b98120' : call.status === 'failed' ? '#ef444420' : '#64748b20',
-                                color: call.status === 'completed' ? '#10b981' : call.status === 'failed' ? '#ef4444' : '#94a3b8',
-                                fontWeight: '600',
+                                color: '#64748b',
+                                textAlign: 'right',
+                                flexShrink: 0,
                             }}>
-                                {call.duration ? `${call.duration}s` : call.status}
+                                {getTimeAgo(call.created_at)}
                             </div>
                         </div>
                     ))}

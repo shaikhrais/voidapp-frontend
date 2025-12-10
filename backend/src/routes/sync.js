@@ -58,8 +58,8 @@ sync.post('/calls', async (c) => {
                 await db.prepare(`
                     INSERT OR REPLACE INTO calls (
                         id, sid, from_number, to_number, status, direction, 
-                        duration, organization_id, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        duration, organization_id, user_id, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `).bind(
                     `call-${call.sid}`,
                     call.sid,
@@ -69,6 +69,7 @@ sync.post('/calls', async (c) => {
                     call.direction, // inbound, outbound
                     call.duration || 0,
                     user.organization_id,
+                    user.id,
                     new Date(call.date_created).getTime() / 1000,
                     Date.now() / 1000
                 ).run();

@@ -1,0 +1,23 @@
+# Ignore old Sequelize files
+src/models/
+src/config/database.js
+src/server.js
+
+# Ignore test files
+*.test.js
+tests/
+__tests__/
+
+# Ignore documentation
+*.md
+!README.md
+
+# Ignore local files
+.env
+.env.local
+database.sqlite
+*.log
+
+# Ignore git
+.git/
+.gitignore

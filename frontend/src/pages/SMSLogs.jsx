@@ -9,8 +9,8 @@ const SMSLogs = () => {
     useEffect(() => {
         const fetchMessages = async () => {
             try {
-                const response = await api.get('/sms');
-                setMessages(response.data);
+                const response = await api.get('/messages/recent');
+                setMessages(response.data.messages || []);
             } catch (error) {
                 console.error('Error fetching messages:', error);
             } finally {
@@ -47,17 +47,17 @@ const SMSLogs = () => {
                         </thead>
                         <tbody>
                             {messages.map((msg) => (
-                                <tr key={msg.sid} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                <tr key={msg.sid || msg.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                                     <td style={{ padding: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                        {msg.direction === 'outbound-api' ? (
+                                        {msg.direction === 'outbound' ? (
                                             <ArrowUpRight size={16} color="#2563eb" />
                                         ) : (
                                             <ArrowDownLeft size={16} color="#10b981" />
                                         )}
                                         <span style={{ textTransform: 'capitalize' }}>{msg.direction}</span>
                                     </td>
-                                    <td style={{ padding: '1rem', color: '#111827' }}>{msg.from}</td>
-                                    <td style={{ padding: '1rem', color: '#111827' }}>{msg.to}</td>
+                                    <td style={{ padding: '1rem', color: '#111827' }}>{msg.from_number}</td>
+                                    <td style={{ padding: '1rem', color: '#111827' }}>{msg.to_number}</td>
                                     <td style={{ padding: '1rem', color: '#4b5563', maxWidth: '300px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {msg.body}
                                     </td>
@@ -73,7 +73,9 @@ const SMSLogs = () => {
                                             {msg.status}
                                         </span>
                                     </td>
-                                    <td style={{ padding: '1rem', color: '#6b7280' }}>{new Date(msg.createdAt).toLocaleString()}</td>
+                                    <td style={{ padding: '1rem', color: '#6b7280' }}>
+                                        {new Date(msg.created_at * 1000).toLocaleString()}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>

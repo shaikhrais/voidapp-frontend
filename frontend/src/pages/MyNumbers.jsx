@@ -12,7 +12,7 @@ const MyNumbers = () => {
     const fetchNumbers = async () => {
         try {
             setLoading(true);
-            const response = await api.get('/numbers');
+            const response = await api.get('/admin/numbers');
             setNumbers(response.data.numbers || []);
         } catch (error) {
             console.error('Error fetching numbers:', error);

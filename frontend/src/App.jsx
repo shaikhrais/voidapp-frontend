@@ -16,6 +16,10 @@ import MyNumbers from './pages/MyNumbers';
 import BuyNumber from './pages/BuyNumber';
 import CallLogs from './pages/CallLogs';
 import SMSLogs from './pages/SMSLogs';
+import Messages from './pages/Messages';
+import CallRoutingConfig from './pages/CallRoutingConfig';
+import AgentDashboard from './pages/AgentDashboard';
+import QueueMonitor from './pages/QueueMonitor';
 import Settings from './pages/Settings';
 import LoadingSplash from './components/LoadingSplash';
 
@@ -48,6 +52,10 @@ function App() {
           }>
             <Route index element={<Dashboard />} />
             <Route path="dialer" element={<DialerLayout />} />
+            <Route path="messages" element={<Messages />} />
+            <Route path="routing-config" element={<CallRoutingConfig />} />
+            <Route path="agent-dashboard" element={<AgentDashboard />} />
+            <Route path="queue-monitor" element={<QueueMonitor />} />
             <Route path="numbers" element={<MyNumbers />} />
             <Route path="numbers/buy" element={<BuyNumber />} />
             <Route path="calls" element={<CallLogs />} />

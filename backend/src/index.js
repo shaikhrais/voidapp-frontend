@@ -7,16 +7,16 @@ import { cors } from 'hono/cors';
 // Import route modules
 import authRoutes from './routes/auth.js';
 import billingRoutes from './routes/billing.js';
-import callsRoutes from './routes/calls.js';
-import smsRoutes from './routes/sms.js';
-import numbersRoutes from './routes/numbers.js';
 import syncRoutes from './routes/sync.js';
 import voiceRoutes from './routes/voice.js';
 import adminRoutes from './routes/admin.js';
 import agencyRoutes from './routes/agency.js';
 import businessRoutes from './routes/business.js';
-import organizationsRoutes from './routes/organizations.js';
-import webhooksRoutes from './routes/webhooks.js';
+import callsRoutes from './routes/calls.js';
+import messagesRoutes from './routes/messages.js';
+import routingRoutes from './routes/routing.js';
+import teamsRoutes from './routes/teams.js';
+import distributeRoutes from './routes/distribute.js';
 
 const app = new Hono();
 
@@ -88,11 +88,17 @@ app.route('/api/billing', billingRoutes);
 // Calls
 app.route('/api/calls', callsRoutes);
 
-// SMS/Messages
-app.route('/api/sms', smsRoutes);
+// Messages (SMS)
+app.route('/api/messages', messagesRoutes);
 
-// Phone Numbers
-app.route('/api/numbers', numbersRoutes);
+// Call Routing Configuration
+app.route('/api/routing', routingRoutes);
+
+// Teams & Call Queue
+app.route('/api/teams', teamsRoutes);
+
+// Call Distribution
+app.route('/api/distribute', distributeRoutes);
 
 // Twilio Sync
 app.route('/api/sync', syncRoutes);
@@ -100,11 +106,7 @@ app.route('/api/sync', syncRoutes);
 // Voice (Twilio Voice SDK)
 app.route('/api/voice', voiceRoutes);
 
-// Organizations
-app.route('/api/organizations', organizationsRoutes);
-
-// Webhooks (Twilio callbacks)
-app.route('/api/webhooks', webhooksRoutes);
+// Note: Organizations and Webhooks routes will be added in future updates
 
 // Admin Routes (Super Admin only)
 app.route('/api/admin', adminRoutes);

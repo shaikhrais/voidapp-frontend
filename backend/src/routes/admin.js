@@ -351,4 +351,36 @@ admin.get('/analytics', async (c) => {
     }
 });
 
+// Get all phone numbers (super admin can see all)
+admin.get('/numbers', async (c) => {
+    try {
+        const db = c.env.DB;
+
+        const numbers = await db.prepare(`
+            SELECT 
+                p.id,
+                p.sid,
+                p.phone_number,
+                p.friendly_name,
+                p.organization_id,
+                p.created_at,
+                p.updated_at,
+                o.name as organization_name,
+                o.type as organization_type
+            FROM phone_numbers p
+            LEFT JOIN organizations_v2 o ON p.organization_id = o.id
+            ORDER BY p.created_at DESC
+        `).all();
+
+        return c.json({
+            success: true,
+            numbers: numbers.results || [],
+            total: numbers.results?.length || 0
+        });
+    } catch (error) {
+        console.error('Get numbers error:', error);
+        return c.json({ error: 'Failed to fetch phone numbers' }, 500);
+    }
+});
+
 export default admin;

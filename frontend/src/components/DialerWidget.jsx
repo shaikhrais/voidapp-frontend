@@ -34,7 +34,7 @@ const DialerWidget = ({ onCallLogged }) => {
 
     const fetchMyNumbers = async () => {
         try {
-            const response = await api.get('/numbers');
+            const response = await api.get('/admin/numbers');
             const numbers = response.data.numbers || [];
             setMyNumbers(numbers);
             if (numbers.length > 0) {
@@ -160,7 +160,7 @@ const DialerWidget = ({ onCallLogged }) => {
 
                 console.log('💾 Logging call to database:', logData);
 
-                const logResponse = await api.post('/api/calls/log', logData);
+                const logResponse = await api.post('/calls/log', logData);
 
                 console.log('✅ Call logged successfully:', logResponse.data);
 
