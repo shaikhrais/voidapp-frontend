@@ -17,6 +17,7 @@ import messagesRoutes from './routes/messages.js';
 import routingRoutes from './routes/routing.js';
 import teamsRoutes from './routes/teams.js';
 import distributeRoutes from './routes/distribute.js';
+import contactsRoutes from './routes/contacts.js';
 
 const app = new Hono();
 
@@ -99,6 +100,9 @@ app.route('/api/teams', teamsRoutes);
 
 // Call Distribution
 app.route('/api/distribute', distributeRoutes);
+
+// Contacts
+app.route('/api/contacts', contactsRoutes);
 
 // Twilio Sync
 app.route('/api/sync', syncRoutes);

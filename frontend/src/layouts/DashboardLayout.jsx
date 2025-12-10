@@ -18,6 +18,7 @@ const DashboardLayout = () => {
         { path: '/dashboard', label: 'Overview', icon: LayoutDashboard },
         { path: '/dashboard/dialer', label: 'Dialer', icon: PhoneCall },
         { path: '/dashboard/numbers', label: 'Phone Numbers', icon: Phone },
+        { path: '/dashboard/contacts', label: 'Contacts', icon: Users },
         { path: '/dashboard/calls', label: 'Call Logs', icon: PhoneCall },
         { path: '/dashboard/messages', label: 'Messages', icon: MessageSquare },
         { path: '/dashboard/sms', label: 'SMS Logs', icon: MessageSquare },

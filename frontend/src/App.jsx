@@ -20,6 +20,7 @@ import Messages from './pages/Messages';
 import CallRoutingConfig from './pages/CallRoutingConfig';
 import AgentDashboard from './pages/AgentDashboard';
 import QueueMonitor from './pages/QueueMonitor';
+import Contacts from './pages/Contacts';
 import Settings from './pages/Settings';
 import LoadingSplash from './components/LoadingSplash';
 
@@ -60,6 +61,7 @@ function App() {
             <Route path="numbers/buy" element={<BuyNumber />} />
             <Route path="calls" element={<CallLogs />} />
             <Route path="sms" element={<SMSLogs />} />
+            <Route path="contacts" element={<Contacts />} />
             <Route path="settings" element={<Settings />} />
             <Route path="admin" element={<AdminDashboard />} />
             <Route path="admin/agencies" element={<Agencies />} />
